@@ -33,7 +33,7 @@ Repository = "https://github.com/nvaccess/addonTemplate"
 build = [
 	"scons==4.10.1",
 	"Markdown==3.10",
-	"tomlkit==0.13.0",
+	"tomlkit==0.15.0",
 ]
 # Translations management
 l10n = [

@@ -367,24 +367,48 @@ def mergePyprojectToml(projPath: str | Path, tplPath: str | Path, metadata: dict
 			if not wasOriginallyNvaccess:
 				cleanupPlaceholderAuthors(projectSection)
 
-			if "dependencies" in projectSection:
+			# Filter and merge custom dependencies not managed by PEP 735 dependency groups
+			if isinstance(projectSection.get("dependencies"), (list, MutableSequence)):
 				tplDeps = projectSection["dependencies"]
 				tplBases = {getBasePackageName(d) for d in tplDeps}
 
 				# Collect all tooling package names managed by template dependency groups
 				groupBases: set[str] = set()
-				if "dependency-groups" in mergedData:
+				if "dependency-groups" in mergedData and isinstance(mergedData["dependency-groups"], MutableMapping):
 					for grp in mergedData["dependency-groups"].values():
-						if isinstance(grp, list):
+						if isinstance(grp, (list, MutableSequence)):
 							for item in grp:
 								if isinstance(item, str):
 									groupBases.add(getBasePackageName(item))
 
+				# Known template tooling packages across historical versions
+				# used to filter out deprecated tools (e.g., pre-commit) no longer present in the template.
+				legacyToolingBases = {
+					"pre-commit",
+					"scons",
+					"markdown",
+					"nh3",
+					"crowdin-api-client",
+					"lxml",
+					"mdx_truly_sane_lists",
+					"markdown-link-attr-modifier",
+					"mdx-gh-links",
+					"uv",
+					"ruff",
+					"prek",
+					"pyright",
+				}
+
 				for dep in projDeps:
 					base = getBasePackageName(dep)
+					# Check if dependency is present in template dependencies or dependency groups
+					isInTemplate = base in tplBases or base in groupBases
+					# Check if dependency is a legacy tooling package dropped by the template
+					isDroppedTooling = base in legacyToolingBases and not isInTemplate
+
 					# Only append to project.dependencies if not already present in template
 					# dependencies nor managed by PEP 735 dependency groups
-					if base not in tplBases and base not in groupBases:
+					if not isInTemplate and not isDroppedTooling:
 						tplDeps.append(dep)
 
 		if not dryRun:
@@ -503,12 +527,14 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> None:
 	protectedElements = {
 		"readme.md",
 		"changelog.md",
+		"addontemplate.egg-info",
 		"addon",
 		".git",
 		"__pycache__",
 		".venv",
 		"docs",
 		".ruff_cache",
+		"tests",
 	}
 
 	ignoreFilePath = os.path.join(addonDir, ".addonmergeignore")
