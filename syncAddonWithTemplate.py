@@ -233,6 +233,42 @@ def replaceAstRange(tplLines: list[str], replacements: dict[tuple[int, int], str
 		tplLines[start:end] = [replacements[(start, end)]]
 
 
+def mergeDependencyLists(projList: list[Any], tplList: list[Any]) -> list[Any]:
+	"""Intelligently merge two dependency lists by updating package versions based on base names.
+
+	Preserves custom user dependencies while replacing existing template tools with their newer versions.
+
+	:param projList: The existing project's dependency list.
+	:param tplList: The template's dependency list.
+	:return: A merged list with updated versions and preserved custom items.
+	"""
+	# Map base package name -> index in projList
+	projIndexByBase: dict[str, int] = {}
+	for idx, item in enumerate(projList):
+		if isinstance(item, str):
+			base = getBasePackageName(item)
+			projIndexByBase[base] = idx
+
+	merged = list(projList)
+
+	for tplItem in tplList:
+		if isinstance(tplItem, str):
+			tplBase = getBasePackageName(tplItem)
+			if tplBase in projIndexByBase:
+				# Package already exists; update it to the template's version
+				targetIdx = projIndexByBase[tplBase]
+				merged[targetIdx] = tplItem
+			else:
+				# New package from template; append to list
+				merged.append(tplItem)
+		else:
+			# For non-string items (e.g., table inclusions like { include-group = "..." })
+			if tplItem not in merged:
+				merged.append(tplItem)
+
+	return merged
+
+
 def deepMergeDicts(dictProj: dict[str, Any], dictTpl: dict[str, Any]) -> dict[str, Any]:
 	"""Recursively merges dictTpl into dictProj.
 
@@ -246,9 +282,8 @@ def deepMergeDicts(dictProj: dict[str, Any], dictTpl: dict[str, Any]) -> dict[st
 			if isinstance(projVal, MutableMapping) and isinstance(value, MutableMapping):
 				deepMergeDicts(projVal, value)
 			elif isinstance(projVal, MutableSequence) and isinstance(value, MutableSequence):
-				for item in value:
-					if item not in projVal:
-						projVal.append(item)
+				# Intelligently merge dependency lists by package base name
+				dictProj[key] = mergeDependencyLists(list(projVal), list(value))
 			else:
 				pass
 		else:
