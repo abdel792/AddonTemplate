@@ -13,6 +13,7 @@ from syncAddonWithTemplate import (
 	formatAuthorList,
 	mergeBuildvarsFile,
 	mergePyprojectToml,
+	mergeDependencyLists,
 )
 
 
@@ -180,6 +181,77 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 			content = projBvPath.read_text(encoding="utf-8")
 			self.assertIn("addon_name='dayOfTheWeek'", content)
 			self.assertIn("speechDictionaries: SpeechDictionaries = {}", content)
+
+	def testMergeDependencyLists(self) -> None:
+		"""Ensure dependency lists merge updates existing package versions while preserving custom ones."""
+		projDeps = ["pyright>=1.1.0", "requests>=2.28.0", "ruff==0.1.0"]
+		tplDeps = ["pyright>=1.2.0", "ruff==0.2.0", "pytest"]
+
+		merged = mergeDependencyLists(projDeps, tplDeps)
+
+		# Check that versions from template override project versions
+		self.assertIn("pyright>=1.2.0", merged)
+		self.assertNotIn("pyright>=1.1.0", merged)
+		self.assertIn("ruff==0.2.0", merged)
+		
+		# Check that custom dependency is preserved
+		self.assertIn("requests>=2.28.0", merged)
+		
+		# Check that new template dependency is added
+		self.assertIn("pytest", merged)
+
+	def testMergePyprojectTomlIntelligent(self) -> None:
+		"""Ensure pyproject.toml is intelligently merged without duplicating dependencies."""
+		with tempfile.TemporaryDirectory() as tempDir:
+			projToml = Path(tempDir) / "pyproject.toml"
+			tplToml = Path(tempDir) / "template_pyproject.toml"
+
+			projToml.write_text(
+				'[project]\n'
+				'name = "myAddon"\n'
+				'dependencies = ["requests>=2.0.0", "pyright>=1.0.0"]\n',
+				encoding="utf-8",
+			)
+
+			tplToml.write_text(
+				'[project]\n'
+				'name = "addonTemplate"\n'
+				'dependencies = ["pyright>=2.0.0", "ruff"]\n'
+				'[dependency-groups]\n'
+				'dev = ["pytest"]\n',
+				encoding="utf-8",
+			)
+
+			status = mergePyprojectToml(projToml, tplToml, metadata={}, dryRun=False)
+			self.assertEqual(status, "merged intelligently (tomlkit)")
+
+			content = projToml.read_text(encoding="utf-8")
+			self.assertIn('name = "myAddon"', content)
+			self.assertIn('requests>=2.0.0', content)
+
+	def testMergeBuildvarsAutoImportsOs(self) -> None:
+		"""Ensure 'import os' is automatically added if merged buildVars uses the os module."""
+		with tempfile.TemporaryDirectory() as tempDir:
+			projBvPath = Path(tempDir) / "buildVars.py"
+			tplBvPath = Path(tempDir) / "template_buildVars.py"
+
+			# Legacy buildVars using os module without import in template
+			projBvPath.write_text(
+				'import os\n'
+				'pythonSources = [os.path.join("addon", "*.py")]\n',
+				encoding="utf-8",
+			)
+
+			tplBvPath.write_text(
+				'pythonSources: list[str] = []\n',
+				encoding="utf-8",
+			)
+
+			metadata, globalVars = extractBuildvarsMetadata(projBvPath)
+			mergeBuildvarsFile(projBvPath, tplBvPath, metadata, globalVars, dryRun=False)
+
+			content = projBvPath.read_text(encoding="utf-8")
+			self.assertTrue(content.startswith("import os\n"))
 
 
 if __name__ == "__main__":
