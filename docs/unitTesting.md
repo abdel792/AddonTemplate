@@ -46,6 +46,6 @@ The unit test suite covers key logic in `syncAddonWithTemplate.py`, ensuring AST
 * **`testMergeModernBuildvarsMissingSpeechDictionaries`**: Ensures that missing modern attributes (like `speechDictionaries`) are injected into existing `buildVars.py` files without overwriting present configurations.
 * **`testMergeBuildvarsAutoImportsOs`**: Confirms that `import os` is automatically prepended at the top of the merged `buildVars.py` file if any merged variable uses functions from the `os` module (e.g., `os.path.join`).
 * **`testFixTomlIndentation`**: Verifies that 4-space indentations are correctly converted into tabs inside `maintainers` or `authors` TOML array blocks while leaving other sections untouched.
-* **`testFormatAuthorList`**: Tests parsing of raw author strings (such as `"Name <email>"`) into `tomlkit` array objects with structured `name` and `email` key-value pairs.
+* **`testFormatAuthorList`**: Tests parsing of raw author strings (such as `"Name <email>"`) into `tomlkit` array objects with structured `name` and `email` key-value pairs, ensuring empty `email` fields are omitted for PEP 621 compliance.
 * **`testMergeDependencyLists`**: Checks that dependency lists are merged intelligently by base package name, updating outdated tool versions while preserving custom user dependencies.
 * **`testMergePyprojectTomlIntelligent`**: Verifies that `pyproject.toml` files are merged using `tomlkit` without creating duplicate dependencies or clobbering existing configuration sections.
