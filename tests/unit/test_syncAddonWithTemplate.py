@@ -222,7 +222,8 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 		self.assertEqual(authorsArray[0]["name"], "John Doe")
 		self.assertEqual(authorsArray[0]["email"], "john@example.com")
 		self.assertEqual(authorsArray[1]["name"], "Jane Smith")
-		self.assertEqual(authorsArray[1]["email"], "")
+		# Verify that the email key is omitted when empty (PEP 621 / uv compliance)
+		self.assertNotIn("email", authorsArray[1])
 
 	def testMergeDependencyLists(self) -> None:
 		"""Ensure dependency lists merge updates existing package versions while preserving custom ones."""
