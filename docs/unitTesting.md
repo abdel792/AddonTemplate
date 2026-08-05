@@ -39,6 +39,8 @@ The unit test suite covers key logic in `syncAddonWithTemplate.py`, ensuring AST
 
 * **`testMergeLegacyBuildvarsWithOfficialTemplate`**: Validates the AST-based migration of legacy dictionary-based `buildVars.py` files into the official modern `AddonInfo` class structure.
 * **`testMergeModernBuildvarsMissingSpeechDictionaries`**: Ensures that missing modern attributes (like `speechDictionaries`) are injected into existing `buildVars.py` files without overwriting present configurations.
+* **`testSetupAddonMergeIgnore`**: Verifies that `.addonmergeignore` is automatically bootstrapped from the template if missing, preserved if already present, and left untouched during dry-run executions.
+* **`testAddonMergeIgnore`**: Confirms that files and patterns specified in `.addonmergeignore` are strictly excluded from being overwritten during full add-on synchronization.
 * **`testMergeBuildvarsAutoImportsOs`**: Confirms that `import os` is automatically prepended at the top of the merged `buildVars.py` file if any merged variable uses functions from the `os` module (e.g., `os.path.join`).
 * **`testFixTomlIndentation`**: Verifies that 4-space indentations are correctly converted into tabs inside `maintainers` or `authors` TOML array blocks while leaving other sections untouched.
 * **`testFormatAuthorList`**: Tests parsing of raw author strings (such as `"Name <email>"`) into `tomlkit` array objects with structured `name` and `email` key-value pairs, ensuring empty `email` fields are omitted for PEP 621 compliance.

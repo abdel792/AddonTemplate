@@ -16,6 +16,8 @@ from syncAddonWithTemplate import (
 	mergeBuildvarsFile,
 	mergeDependencyLists,
 	mergePyprojectToml,
+	setupAddonMergeIgnore,
+	runSynchronization,
 )
 
 
@@ -164,6 +166,88 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 			content = projBvPath.read_text(encoding="utf-8")
 			self.assertIn("addon_name='dayOfTheWeek'", content)
 			self.assertIn("speechDictionaries: SpeechDictionaries = {}", content)
+
+	def test_setupAddonMergeIgnore(self) -> None:
+		"""Verify bootstrapping of .addonmergeignore from template to add-on directory.
+
+		Tests creation when missing, preservation when existing, and behavior in dry-run mode.
+		"""
+		tempDirObj: tempfile.TemporaryDirectory[str] = tempfile.TemporaryDirectory()
+		self.addCleanup(tempDirObj.cleanup)
+		tempPath: Path = Path(tempDirObj.name)
+
+		addonDir: Path = tempPath / "myAddon"
+		templateDir: Path = tempPath / "template"
+		addonDir.mkdir(parents=True, exist_ok=True)
+		templateDir.mkdir(parents=True, exist_ok=True)
+
+		# Create template .addonmergeignore
+		templateIgnore: Path = templateDir / ".addonmergeignore"
+		templateIgnore.write_text("*.tmp\nbuild/\n", encoding="utf-8")
+
+		addonIgnore: Path = addonDir / ".addonmergeignore"
+
+		# Case 1: Dry run should NOT copy the file
+		setupAddonMergeIgnore(tempDir=templateDir, addonDir=addonDir, dryRun=True)
+		self.assertFalse(addonIgnore.exists())
+
+		# Case 2: Standard execution should copy (bootstrap) the missing file
+		setupAddonMergeIgnore(tempDir=templateDir, addonDir=addonDir, dryRun=False)
+		self.assertTrue(addonIgnore.exists())
+		self.assertEqual(addonIgnore.read_text(encoding="utf-8"), "*.tmp\nbuild/\n")
+
+		# Case 3: Existing file should NOT be overwritten by template
+		addonIgnore.write_text("customRule/\n", encoding="utf-8")
+		setupAddonMergeIgnore(tempDir=templateDir, addonDir=addonDir, dryRun=False)
+		self.assertEqual(addonIgnore.read_text(encoding="utf-8"), "customRule/\n")
+
+	def test_addonMergeIgnore(self) -> None:
+		"""Verify that files specified in .addonmergeignore are excluded during synchronization.
+
+		Ensures that existing files listed in the ignore file retain their original content
+		and are not overwritten by template files.
+		"""
+		tempDirObj: tempfile.TemporaryDirectory[str] = tempfile.TemporaryDirectory()
+		self.addCleanup(tempDirObj.cleanup)
+		tempPath: Path = Path(tempDirObj.name)
+
+		# 1. Setup project directories
+		addonDir: Path = tempPath / "myAddon"
+		templateDir: Path = tempPath / "template"
+		addonDir.mkdir(parents=True, exist_ok=True)
+		templateDir.mkdir(parents=True, exist_ok=True)
+
+		# 2. Populate template and addon files
+		normalFileTemplate: Path = templateDir / "normalFile.txt"
+		normalFileTemplate.write_text("Template content", encoding="utf-8")
+
+		ignoredFileTemplate: Path = templateDir / "ignoredFile.txt"
+		ignoredFileTemplate.write_text("Template ignored content", encoding="utf-8")
+
+		ignoredFileAddon: Path = addonDir / "ignoredFile.txt"
+		ignoredFileAddon.write_text("Original addon content", encoding="utf-8")
+
+		# 3. Create .addonmergeignore file in the addon directory
+		ignoreFile: Path = addonDir / ".addonmergeignore"
+		ignoreFile.write_text("ignoredFile.txt\n", encoding="utf-8")
+
+		# 4. Execute synchronization with correct arguments (tempDir, addonDir, dryRun)
+		runSynchronization(
+			tempDir=str(templateDir),
+			addonDir=str(addonDir),
+			dryRun=False,
+		)
+
+		# 5. Assertions
+		normalFileAddon: Path = addonDir / "normalFile.txt"
+		self.assertTrue(normalFileAddon.exists())
+		self.assertEqual(normalFileAddon.read_text(encoding="utf-8"), "Template content")
+
+		# The ignored file must preserve its original content
+		self.assertEqual(
+			ignoredFileAddon.read_text(encoding="utf-8"),
+			"Original addon content",
+		)
 
 	def testMergeBuildvarsAutoImportsOs(self) -> None:
 		"""Ensure 'import os' is automatically added if merged buildVars uses the os module."""
