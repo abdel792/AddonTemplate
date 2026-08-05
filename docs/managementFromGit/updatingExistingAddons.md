@@ -86,16 +86,7 @@ Before running the tool, ensure your system meets the following requirements:
   Git must be installed and available in your system `PATH`.
 
 * For add-ons without a pyproject.toml file, **Dependency Management (tomlkit)**:
-  Because the automated script relies on the third-party `tomlkit` library to safely parse and merge configurations, it must be installed in your global Python environment before execution.
-  This is necessary because legacy add-on repositories do not include this dependency yet, and it is not yet present by default in the template's stable `master` branch.
-
-  To install or update `tomlkit` globally, run the following command in your terminal:
-
-  ```sh
-  python -m pip install -U tomlkit
-  ```
-
-  *(Note: Windows users using the standard Python launcher can replace `python` with `py` if needed: `py -m pip install -U tomlkit`)*
+  Because the automated script relies on the third-party `tomlkit` library to safely parse and merge configurations, it must be available in the Python environment used to run the script (either installed in the environment, or provided temporarily via `uv run --with tomlkit`).
 
 ### Running the automated tool
 
@@ -106,7 +97,7 @@ The script is highly flexible and supports two execution modes:
    It will automatically locate the project root by searching for `buildVars.py`.
 
    ```sh
-   uv run python syncAddonWithTemplate.py -ad .
+   uv run python syncAddonWithTemplate.py
    ```
 
 2. **Target Directory Mode (With argument):**
@@ -161,28 +152,34 @@ This architectural design allows developers to cleanly decouple their project-sp
 
 To declare custom exceptions, create a plain text file named `.addonmergeignore` and place it directly **at the root of your target add-on repository**.
 
-* Inside this file, list the names of the files or folders you want the tool to skip during synchronization.
+* Inside this file, list the names, relative paths, or glob patterns of the files or folders you want the tool to skip during synchronization.
+* The file uses standard `.gitignore` pattern matching syntax (parsed via `pathspec`).
+* You can write one pattern per line. Empty lines and lines starting with `#` are automatically treated as comments and ignored.
 
-* You can write one pattern per line.
-  Empty lines and lines starting with `#` are automatically treated as comments and ignored.
+For instance, if you wish to prevent the synchronization process from overwriting your custom execution scripts or specific workflows, simply add them to the file:
 
-For instance, if you wish to prevent the synchronization process from overwriting your custom execution scripts or your exclusion mapping file itself, simply add them to the file:
+```gitignore
+# Preserve local release workflows
+.github/workflows/release.yml
 
-```text
-# Freeze the synchronization script version
-syncAddonWithTemplate.py
-# Protect your local merge settings file from being replaced
-.addonmergeignore
+# Protect custom localized documentation
+addon/doc/fr/custom-extra-help.html
 ```
 
 ##### Crucial Requirements & Design Constraints
 
-1. **Case-Insensitivity:**
+1. **Automatic Self-Exclusion:**
+   The update tool automatically protects `.addonmergeignore` itself from being overwritten during synchronization. Even if `.addonmergeignore` is present in the template repository, the target add-on's local `.addonmergeignore` file is preserved without needing to explicitly list itself.
+
+2. **Presence Check on Initial Run:**
+   Before copying or updating any template files, the script explicitly checks whether `.addonmergeignore` is already present or absent at the root of the target add-on repository. If present, its custom rules are loaded immediately before processing any file transfers.
+
+3. **Case-Insensitivity:**
    The update tool evaluates exclusions using a standardized, case-insensitive matching algorithm.
    This ensures maximum cross-platform reliability (especially between Windows and Unix-like environments).
    Since the script automatically normalizes all inputs to lowercase during execution, **you can write your rules using any casing you prefer** (e.g., `UpdateAddonFromTemplate.py` or `updateaddonfromtemplate.py` will both work perfectly).
 
-2. **File Location Requirement:**
+4. **File Location Requirement:**
    The update engine always loads custom exclusions from the target add-on's root folder being updated.
    Therefore, **the `.addonmergeignore` file must always reside inside the destination add-on directory**, even if you are executing the `syncAddonWithTemplate.py` script from a completely different directory or an external workspace.
 
@@ -197,7 +194,7 @@ Downloads the latest remote template, creates a safety backup of your repository
 * **Syntax A (Script inside the add-on repository):**
 
   ```sh
-  uv run python syncAddonWithTemplate.py -ad .
+  uv run python syncAddonWithTemplate.py
   ```
 
 * **Syntax B (Script outside the add-on repository):**
@@ -213,7 +210,7 @@ Useful when testing local modifications applied to the `AddonTemplate` or when w
 * **Syntax A (Script inside the add-on repository):**
 
   ```sh
-  uv run python syncAddonWithTemplate.py -ad . -td /path/to/local/AddonTemplate
+  uv run python syncAddonWithTemplate.py -td /path/to/local/AddonTemplate
   ```
 
 * **Syntax B (Script outside the add-on repository):**
@@ -229,7 +226,7 @@ Analyzes structural layouts, evaluates configurations, reads the `.addonmergeign
 * **Syntax A (Script inside the add-on repository):**
 
   ```sh
-  uv run python syncAddonWithTemplate.py -ad . --dry-run
+  uv run python syncAddonWithTemplate.py --dry-run
   ```
 
 * **Syntax B (Script outside the add-on repository):**
@@ -245,7 +242,7 @@ Target a project repository while skipping the automated safety backup creation 
 * **Syntax A (Script inside the add-on repository):**
 
   ```sh
-  uv run python syncAddonWithTemplate.py -ad . --skip-backup
+  uv run python syncAddonWithTemplate.py --skip-backup
   ```
 
 * **Syntax B (Script outside the add-on repository):**
@@ -259,7 +256,7 @@ Target a project repository while skipping the automated safety backup creation 
 If you wish to execute the synchronization script directly without installing its mandatory dependencies (like `tomlkit`) into your current environment beforehand, you can request `uv` to fetch and expose the packages temporarily during the command lifetime by using the `--with` flag:
 
 ```sh
-uv run --with tomlkit python syncAddonWithTemplate.py -ad .
+uv run --with tomlkit python syncAddonWithTemplate.py
 ```
 
 ---

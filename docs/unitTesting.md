@@ -26,14 +26,9 @@ Here is what each part of the command does:
 
 You can run individual test modules during development by specifying their path:
 
-* **Sanity / Template Tests:**
-  ``` bash
-  uv run python -m unittest -v tests/unit/template/test_sanity.py
-  ```
-
 * **Add-on Synchronization Tool Tests:**
   ``` bash
-  uv run python -m unittest -v tests/unit/update/test_syncAddonWithTemplate.py
+  uv run python -m unittest -v tests/unit/template/test_syncAddonWithTemplate.py
   ```
 
 ---
