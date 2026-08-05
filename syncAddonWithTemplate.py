@@ -236,7 +236,8 @@ def getBasePackageName(dependencyString: str) -> str:
 	:return: The normalized base package name in lowercase.
 	"""
 	regexMatch: re.Match[str] | None = re.match(r"^[A-Za-z0-9][A-Za-z0-9._-]*", dependencyString.strip())
-	return regexMatch.group(0).lower() if regexMatch else dependencyString.strip().lower()
+	base: str = regexMatch.group(0) if regexMatch else dependencyString.strip()
+	return base.lower().replace("_", "-")
 
 
 def replaceAstRange(templateLines: list[str], replacements: dict[tuple[int, int], str]) -> None:
@@ -446,7 +447,7 @@ def mergePyprojectToml(projPath: str | Path, tplPath: str | Path, metadata: dict
 					"nh3",
 					"crowdin-api-client",
 					"lxml",
-					"mdx_truly_sane_lists",
+					"mdx-truly-sane-lists",
 					"markdown-link-attr-modifier",
 					"mdx-gh-links",
 					"uv",
@@ -573,6 +574,26 @@ def mergeBuildvarsFile(
 	return "merged & structured (AST verified)"
 
 
+def setupAddonMergeIgnore(tempDir: str | Path, addonDir: str | Path, dryRun: bool = False) -> None:
+	"""Ensures .addonmergeignore exists in the target add-on directory.
+
+	If missing, copies it from the template to bootstrap default ignore rules.
+	Does nothing if the file is already present.
+
+	:param tempDir: Path to the template directory.
+	:param addonDir: Path to the target add-on directory.
+	:param dryRun: If True, simulate execution without modifying files.
+	:return: None
+	"""
+	ignoreFilePath: Path = Path(addonDir) / ".addonmergeignore"
+	templateIgnorePath: Path = Path(tempDir) / ".addonmergeignore"
+
+	if not ignoreFilePath.exists() and templateIgnorePath.exists():
+		if not dryRun:
+			shutil.copy2(templateIgnorePath, ignoreFilePath)
+		logger.info("Bootstrapped missing .addonmergeignore from template.")
+
+
 def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> None:
 	"""Synchronizes template machinery files from the temporary workspace into the target directory.
 
@@ -582,6 +603,8 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> None:
 	:return: None
 	"""
 	logger.info("Synchronizing template machinery files...")
+	# Bootstrap missing .addonmergeignore before reading protection rules
+	setupAddonMergeIgnore(tempDir, addonDir, dryRun)
 
 	protectedElements: set[str] = {
 		"readme.md",
