@@ -26,11 +26,11 @@ def load_tests(
 
 	Enforces test execution in source code definition order using class dict insertion order.
 	"""
-	# Python's dir() sorts methods alphabetically by default. We use __dict__ 
+	# Python's dir() sorts methods alphabetically by default. We use __dict__
 	# to preserve the exact declaration order from the source file.
-	methodOrder = list(TestSyncAddonWithTemplate.__dict__.keys())
+	orderIndex = {name: i for i, name in enumerate(TestSyncAddonWithTemplate.__dict__)}
 	loader.sortTestMethodsUsing = (
-		lambda a, b: methodOrder.index(a) - methodOrder.index(b)
+		lambda a, b: orderIndex.get(a, 999) - orderIndex.get(b, 999)
 	)
 	return loader.loadTestsFromTestCase(TestSyncAddonWithTemplate)
 
