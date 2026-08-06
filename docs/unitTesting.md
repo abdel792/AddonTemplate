@@ -33,16 +33,3 @@ You can run individual test modules during development by specifying their path:
 
 ---
 
-## Synchronization Tool Test Suite Overview (`test_syncAddonWithTemplate.py`)
-
-The unit test suite covers key logic in `syncAddonWithTemplate.py`, ensuring AST-based config merges, file parsing, and formatting behave predictably across project updates:
-
-* **`testMergeLegacyBuildvarsWithOfficialTemplate`**: Validates the AST-based migration of legacy dictionary-based `buildVars.py` files into the official modern `AddonInfo` class structure.
-* **`testMergeModernBuildvarsMissingSpeechDictionaries`**: Ensures that missing modern attributes (like `speechDictionaries`) are injected into existing `buildVars.py` files without overwriting present configurations.
-* **`testSetupAddonMergeIgnore`**: Verifies that `.addonmergeignore` is automatically bootstrapped from the template if missing, preserved if already present, and left untouched during dry-run executions.
-* **`testAddonMergeIgnore`**: Confirms that files and patterns specified in `.addonmergeignore` are strictly excluded from being overwritten during full add-on synchronization.
-* **`testMergeBuildvarsAutoImportsOs`**: Confirms that `import os` is automatically prepended at the top of the merged `buildVars.py` file if any merged variable uses functions from the `os` module (e.g., `os.path.join`).
-* **`testFixTomlIndentation`**: Verifies that 4-space indentations are correctly converted into tabs inside `maintainers` or `authors` TOML array blocks while leaving other sections untouched.
-* **`testFormatAuthorList`**: Tests parsing of raw author strings (such as `"Name <email>"`) into `tomlkit` array objects with structured `name` and `email` key-value pairs, ensuring empty `email` fields are omitted for PEP 621 compliance.
-* **`testMergeDependencyLists`**: Checks that dependency lists are merged intelligently by base package name, updating outdated tool versions while preserving custom user dependencies.
-* **`testMergePyprojectTomlIntelligent`**: Verifies that `pyproject.toml` files are merged using `tomlkit` without creating duplicate dependencies or clobbering existing configuration sections.

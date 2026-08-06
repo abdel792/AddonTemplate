@@ -270,7 +270,7 @@ If you prefer not to use the automated tool, you can manually merge the latest v
 1. If you haven't done it yet, from your add-on repository, add the addonTemplate as a remote.
 
 ```sh
-git remote add template https://github.com/nvaccess/addonTemplate.git
+git remote add template https://github.com/nvaccess/AddonTemplate.git
 ```
 
 2. Fetch the template:
