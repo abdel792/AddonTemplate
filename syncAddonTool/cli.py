@@ -114,7 +114,7 @@ def main() -> None:
 	if parsedArgs.dryRun:
 		logger.debug("Safety backup skipped (simulation mode active).")
 	elif parsedArgs.skipBackup:
-		logger.debug("Safety backup skipped (--skip-backup requested by user).")
+		logger.info("Safety backup skipped (--skip-backup requested by user).")
 	else:
 		backupDirPath: str = f"{addonDir}_bak_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 		logger.info("Creating safety automatic backup in: %s...", os.path.basename(backupDirPath))

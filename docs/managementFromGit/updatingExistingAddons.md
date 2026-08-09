@@ -68,44 +68,43 @@ This automation ensures a seamless transition to the new template infrastructure
 The script automatically supports updating two types of legacy add-ons:
 
 * **Legacy Structure (Dictionary-based without pyproject.toml):**
-  For older add-ons where `addon_info` was defined as a standard dictionary, the tool automatically migrates the metadata to the modern `AddonInfo` object structure.
-  It generates a new, fully populated `pyproject.toml` file matching the latest template standards, and synchronizes all infrastructure files.
-
+For older add-ons where `addon_info` was defined as a standard dictionary, the tool automatically migrates the metadata to the modern `AddonInfo` object structure.
+It generates a new, fully populated `pyproject.toml` file matching the latest template standards, and synchronizes all infrastructure files.
 * **Modern Structure (AddonInfo-based):**
-  For newer add-ons that already use the `AddonInfo` object but need upstream template updates, the tool checks for any missing metadata keys in `buildVars.py` to insert them.
-  It safely updates `pyproject.toml` dependencies and versions while preserving your custom configuration rules for tools like `pyright` and `ruff`.
+For newer add-ons that already use the `AddonInfo` object but need upstream template updates, the tool checks for any missing metadata keys in `buildVars.py` to insert them.
+It safely updates `pyproject.toml` dependencies and versions while preserving your custom configuration rules for tools like `pyright` and `ruff`.
 
 ### Prerequisites
 
 Before running the tool, ensure your system meets the following requirements:
 
 * **Python**:
-  Version **3.13** or newer must be installed (matching the template's required Python version).
-
+Version **3.13** or newer must be installed (matching the template's required Python version).
 * **Git**:
-  Git must be installed and available in your system `PATH`.
-
+Git must be installed and available in your system `PATH`.
 * For add-ons without a pyproject.toml file, **Dependency Management (tomlkit)**:
-  Because the automated script relies on the third-party `tomlkit` library to safely parse and merge configurations, it must be available in the Python environment used to run the script (either installed in the environment, or provided temporarily via `uv run --with tomlkit`).
+Because the automated script relies on the third-party `tomlkit` library to safely parse and merge configurations, it must be available in the Python environment used to run the script (either installed in the environment, or provided temporarily via `uv run --with tomlkit`).
+
+> [!IMPORTANT]
+> **Project Structure & Remote Execution:**
+> The update engine is structured as a Python package. The entry script `syncAddonWithTemplate.py` relies on the adjacent `syncAddonTool/` package directory.
+> If you choose to copy or run the Python script from an external directory outside of the repository, **you must copy both `syncAddonWithTemplate.py` AND the `syncAddonTool/` directory together** into that external location. Alternatively, you can use the standalone executable (`syncAddonTool.exe`), which requires no external folders or Python dependencies.
 
 ### Running the automated tool
 
 The script is highly flexible and supports two execution modes:
 
 1. **Standard Mode (No arguments):**
-   Run the script directly from the root of your repository or from any of its subdirectories.
-   It will automatically locate the project root by searching for `buildVars.py`.
-
-   ```sh
-   uv run python syncAddonWithTemplate.py
-   ```
-
+Run the script directly from the root of your repository or from any of its subdirectories.
+It will automatically locate the project root by searching for `buildVars.py`.
+``` sh
+uv run python syncAddonWithTemplate.py
+```
 2. **Target Directory Mode (With argument):**
-   Run the script from any working directory by supplying the optional `addonDir` path (relative or absolute) pointing to the add-on repository you wish to update.
-
-   ```sh
-   uv run python syncAddonWithTemplate.py -ad ../MyAddon
-   ```
+Run the script from any working directory by supplying the optional `addonDir` path (relative or absolute) pointing to the add-on repository you wish to update.
+``` sh
+uv run python syncAddonWithTemplate.py -ad ../MyAddon
+```
 
 > [!NOTE]
 > Before applying any modifications, the script creates an untracked backup directory located next to the add-on folder named `<addon>_bak_<timestamp>`.
@@ -113,14 +112,14 @@ The script is highly flexible and supports two execution modes:
 
 Once the update has completed, verify that the add-on still builds correctly:
 
-```sh
+``` sh
 uv sync
 uv run scons
 ```
 
 If everything builds successfully, remove the `<addon>_bak_<timestamp>` directory, stage and commit the updated infrastructure:
 
-```sh
+``` sh
 git clean -f
 git add .
 git commit -m "chore: sync infrastructure with AddonTemplate"
@@ -135,12 +134,41 @@ You can execute the script with various command-line arguments to customize the 
 #### Available Options
 
 | Short Flag | Long Argument | Description | Default Value |
-| :--- | :--- | :--- | :--- |
+| --- | --- | --- | --- |
 | `-ad` | `--addon-dir` | Path to the root directory of the local add-on you want to update. If not specified, the script automatically walks up from your current directory to find `buildVars.py`. | Current working directory |
 | `-td` | `--template-dir` | Path to a local clone/directory of the NVDA `AddonTemplate`. When provided, the tool skips fetching the template via Git and synchronizes directly using this local reference. | None (clones from GitHub) |
 | `-dr` | `--dry-run` | Simulates the execution. It analyzes structure, logs planned changes, and builds reports without writing or modifying any file on disk. | Disabled |
 | `-s` | `--skip-backup` | Disables the automatic creation of a timestamped backup directory (e.g., `addonName_bak_YYYYMMDD_HHMMSS`) before processing updates. | Disabled (Backup is created) |
 | `-h` | `--help` | Displays the default automated help menu listing all available parameters. | N/A |
+
+#### Running as a Standalone Executable (`syncAddonTool.exe`)
+
+For users or CI pipelines that prefer not to manage local Python environments, `tomlkit` installations, or folder dependencies, a standalone pre-packaged executable (`syncAddonTool.exe`) can be generated using PyInstaller.
+
+The executable bundle incorporates Python, `tomlkit`, and the complete `syncAddonTool/` package into a single, self-contained binary file that can be executed from anywhere on your system.
+
+##### 1. Generating the Executable
+
+Since the `syncAddonTool.spec` configuration file is provided directly at the root of the repository, you can build the standalone executable using `uv` and PyInstaller:
+
+``` sh
+uv run --with pyinstaller pyinstaller syncAddonTool.spec
+```
+
+The compiled executable will be generated inside the `dist/` folder (`dist/syncAddonTool.exe`).
+
+##### 2. Running the Executable
+
+Once compiled or downloaded, `syncAddonTool.exe` accepts the exact same command-line flags (`-ad`, `-td`, `--dry-run`, `--skip-backup`) as the Python script:
+
+* **Targeting an add-on directory from anywhere:**
+``` cmd
+syncAddonTool.exe -ad C:\path\to\my-nvda-addon
+```
+* **Performing a dry-run test:**
+``` cmd
+syncAddonTool.exe -ad C:\path\to\my-nvda-addon --dry-run
+```
 
 #### Customizing Exclusions with `.addonmergeignore`
 
@@ -185,78 +213,91 @@ addon/doc/fr/custom-extra-help.html
 
 #### Usage Examples
 
-Depending on your workflow, the script can be executed either directly from within your add-on repository or from an external directory.
+Depending on your workflow, the synchronization tool can be executed either directly from within your add-on repository or from an external directory using Python or the standalone executable.
+
+> [!NOTE]
+> When executing the Python script from an external directory, remember to include both `syncAddonWithTemplate.py` and `syncAddonTool/` together, as highlighted in the [Prerequisites](https://www.google.com/search?q=%23prerequisites).
 
 ##### 1. Standard Automatic Update
 
 Downloads the latest remote template, creates a safety backup of your repository, and non-destructively synchronizes the machinery files.
 
-* **Syntax A (Script inside the add-on repository):**
-
-  ```sh
-  uv run python syncAddonWithTemplate.py
-  ```
-
-* **Syntax B (Script outside the add-on repository):**
-
-  ```sh
-  uv run python /path/to/syncAddonWithTemplate.py -ad /path/to/my-nvda-addon
-  ```
+* **Syntax A (Python script inside the add-on repository):**
+``` sh
+uv run python syncAddonWithTemplate.py
+```
+* **Syntax B (Python script outside the add-on repository — requires both `syncAddonWithTemplate.py` and `syncAddonTool/`):**
+``` sh
+uv run python /path/to/syncAddonWithTemplate.py -ad /path/to/my-nvda-addon
+```
+* **Syntax C (Standalone executable):**
+``` cmd
+syncAddonTool.exe -ad C:\path\to\my-nvda-addon
+```
 
 ##### 2. Updating from a Local Template Cache (Offline/Development)
 
-Useful when testing local modifications applied to the `AddonTemplate` or when working without an active internet connection.
+Useful when testing local modifications applied to `AddonTemplate` or when working without an active internet connection.
 
-* **Syntax A (Script inside the add-on repository):**
-
-  ```sh
-  uv run python syncAddonWithTemplate.py -td /path/to/local/AddonTemplate
-  ```
-
-* **Syntax B (Script outside the add-on repository):**
-
-  ```sh
-  uv run python /path/to/syncAddonWithTemplate.py -ad /path/to/my-nvda-addon -td /path/to/local/AddonTemplate
-  ```
+* **Syntax A (Python script inside the add-on repository):**
+``` sh
+uv run python syncAddonWithTemplate.py -td /path/to/local/AddonTemplate
+```
+* **Syntax B (Python script outside the add-on repository — requires both `syncAddonWithTemplate.py` and `syncAddonTool/`):**
+``` sh
+uv run python /path/to/syncAddonWithTemplate.py -ad /path/to/my-nvda-addon -td /path/to/local/AddonTemplate
+```
+* **Syntax C (Standalone executable):**
+``` cmd
+syncAddonTool.exe -ad C:\path\to\my-nvda-addon -td C:\path\to\local\AddonTemplate
+```
 
 ##### 3. Simulating Changes Safely (Dry Run)
 
-Analyzes structural layouts, evaluates configurations, reads the `.addonmergeignore` directives, and builds reports without writing anything to disk.
+Analyzes structural layouts, evaluates configurations, reads `.addonmergeignore` directives, and builds reports without writing anything to disk.
 
-* **Syntax A (Script inside the add-on repository):**
-
-  ```sh
-  uv run python syncAddonWithTemplate.py --dry-run
-  ```
-
-* **Syntax B (Script outside the add-on repository):**
-
-  ```sh
-  uv run python /path/to/syncAddonWithTemplate.py --dry-run -ad /path/to/my-nvda-addon
-  ```
+* **Syntax A (Python script inside the add-on repository):**
+``` sh
+uv run python syncAddonWithTemplate.py --dry-run
+```
+* **Syntax B (Python script outside the add-on repository — requires both `syncAddonWithTemplate.py` and `syncAddonTool/`):**
+``` sh
+uv run python /path/to/syncAddonWithTemplate.py --dry-run -ad /path/to/my-nvda-addon
+```
+* **Syntax C (Standalone executable):**
+``` cmd
+syncAddonTool.exe --dry-run -ad C:\path\to\my-nvda-addon
+```
 
 ##### 4. Speeding Up with Backup Omission
 
-Target a project repository while skipping the automated safety backup creation phase to speed up execution.
+Targets a project repository while skipping the automated safety backup creation phase to speed up execution.
 
-* **Syntax A (Script inside the add-on repository):**
+* **Syntax A (Python script inside the add-on repository):**
+``` sh
+uv run python syncAddonWithTemplate.py --skip-backup
+```
+* **Syntax B (Python script outside the add-on repository — requires both `syncAddonWithTemplate.py` and `syncAddonTool/`):**
+``` sh
+uv run python /path/to/syncAddonWithTemplate.py -ad /path/to/my-nvda-addon --skip-backup
+```
+* **Syntax C (Standalone executable):**
+``` cmd
+syncAddonTool.exe -ad C:\path\to\my-nvda-addon --skip-backup
+```
 
-  ```sh
-  uv run python syncAddonWithTemplate.py --skip-backup
-  ```
+##### 5. Run without Prior Installation (`--with` option)
 
-* **Syntax B (Script outside the add-on repository):**
+When using the Python script, if you wish to execute the synchronization tool without installing its required third-party dependencies (like `tomlkit`) into your active environment beforehand, you can request `uv` to expose them temporarily during command execution:
 
-  ```sh
-  uv run python /path/to/syncAddonWithTemplate.py -ad /path/to/my-nvda-addon --skip-backup
-  ```
-
-##### 5. Run without Installation (`--with` option)
-
-If you wish to execute the synchronization script directly without installing its mandatory dependencies (like `tomlkit`) into your current environment beforehand, you can request `uv` to fetch and expose the packages temporarily during the command lifetime by using the `--with` flag:
-
-```sh
+* **Using Python with `uv`:**
+``` sh
 uv run --with tomlkit python syncAddonWithTemplate.py
+```
+* **Using Standalone Executable:**
+*(Note: No `--with` option or dependency installation is needed when running `syncAddonTool.exe`, as all required dependencies are already bundled inside the executable.)*
+``` cmd
+syncAddonTool.exe
 ```
 
 ---
