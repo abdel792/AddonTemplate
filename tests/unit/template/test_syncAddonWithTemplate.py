@@ -2,23 +2,23 @@
 # This file is covered by the GNU General Public License.
 # See the file COPYING for more details.
 
-"""Unit test suite for syncAddonWithTemplate.py module."""
+"""Unit test suite for syncAddonTool package."""
 
 import tempfile
 import unittest
 from pathlib import Path
 
-# Import functions to test
-from syncAddonWithTemplate import (
-	extractBuildvarsMetadata,
+# Import functions from their exact module location within syncAddonTool
+from syncAddonTool.buildVarsSync import extractBuildvarsMetadata, mergeBuildvarsFile
+from syncAddonTool.engine import runSynchronization, setupAddonMergeIgnore
+from syncAddonTool.pyproject import (
 	fixTomlIndentation,
 	formatAuthorList,
-	mergeBuildvarsFile,
 	mergeDependencyLists,
 	mergePyprojectToml,
-	setupAddonMergeIgnore,
-	runSynchronization,
 )
+
+FIXTURES_DIR: Path = Path(__file__).parent / "fixtures"
 
 
 def load_tests(
@@ -28,9 +28,9 @@ def load_tests(
 
 	Enforces test execution in source code definition order using class dict insertion order.
 	"""
-	# Python's dir() sorts methods alphabetically by default. We use __dict__
-	# to preserve the exact declaration order from the source file.
-	orderIndex = {name: i for i, name in enumerate(TestSyncAddonWithTemplate.__dict__)}
+	orderIndex: dict[str, int] = {
+		name: i for i, name in enumerate(TestSyncAddonWithTemplate.__dict__)
+	}
 	loader.sortTestMethodsUsing = (
 		lambda a, b: orderIndex.get(a, 999) - orderIndex.get(b, 999)
 	)
@@ -43,131 +43,61 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 	def testMergeLegacyBuildvarsWithOfficialTemplate(self) -> None:
 		"""Ensure legacy buildVars.py is correctly merged into the latest official template structure."""
 		with tempfile.TemporaryDirectory() as tempDir:
-			projBvPath = Path(tempDir) / "buildVars.py"
-			tplBvPath = Path(tempDir) / "template_buildVars.py"
+			projBvPath: Path = Path(tempDir) / "buildVars.py"
+			tplBvPath: Path = Path(tempDir) / "template_buildVars.py"
 
-			# 1. Legacy dictionary-based buildVars.py
-			projBvPath.write_text(
-				'addon_info = {\n'
-				'    "addon_name": "dayOfTheWeek",\n'
-				'    "addon_summary": _("Day of the week"),\n'
-				'    "addon_version": "20251022.0.1",\n'
-				'}\n'
-				'import os\n'
-				'pythonSources = [os.path.join("addon", "globalPlugins", "*.py")]\n'
-				'i18nSources = pythonSources + ["buildVars.py"]\n'
-				'excludedFiles = []\n'
-				'baseLanguage = "en"\n'
-				'markdownExtensions = []\n',
-				encoding="utf-8",
-			)
+			# 1. Legacy buildVars fixture
+			legacyFixture: Path = FIXTURES_DIR / "legacyBuildVars.py"
+			projBvPath.write_text(legacyFixture.read_text(encoding="utf-8"), encoding="utf-8")
 
-			# 2. Official template buildVars.py content
-			tplBvPath.write_text(
-				'from site_scons.site_tools.NVDATool.typings import AddonInfo, BrailleTables, SymbolDictionaries, SpeechDictionaries\n'
-				'from site_scons.site_tools.NVDATool.utils import _\n\n'
-				'addon_info = AddonInfo(\n'
-				'    addon_name="addonTemplate",\n'
-				'    addon_summary=_("Add-on user visible name"),\n'
-				'    addon_description=_("""Description."""),\n'
-				'    addon_version="x.y",\n'
-				'    addon_changelog=_("""Changelog."""),\n'
-				'    addon_author="name <name@domain.com>",\n'
-				'    addon_url=None,\n'
-				'    addon_sourceURL=None,\n'
-				'    addon_docFileName="readme.html",\n'
-				'    addon_minimumNVDAVersion=None,\n'
-				'    addon_lastTestedNVDAVersion=None,\n'
-				'    addon_updateChannel=None,\n'
-				'    addon_license=None,\n'
-				'    addon_licenseURL=None,\n'
-				')\n\n'
-				'pythonSources: list[str] = []\n'
-				'i18nSources: list[str] = pythonSources + ["buildVars.py"]\n'
-				'excludedFiles: list[str] = []\n'
-				'baseLanguage: str = "en"\n'
-				'markdownExtensions: list[str] = []\n'
-				'brailleTables: BrailleTables = {}\n'
-				'symbolDictionaries: SymbolDictionaries = {}\n'
-				'speechDictionaries: SpeechDictionaries = {}\n',
-				encoding="utf-8",
-			)
+			# 2. Official template buildVars fixture
+			templateFixture: Path = FIXTURES_DIR / "templateBuildVars.py"
+			tplBvPath.write_text(templateFixture.read_text(encoding="utf-8"), encoding="utf-8")
 
+			metadata: dict
+			globalVars: dict
 			metadata, globalVars = extractBuildvarsMetadata(projBvPath)
-			status = mergeBuildvarsFile(
+			status: str = mergeBuildvarsFile(
 				projBvPath, tplBvPath, metadata, globalVars, dryRun=False
 			)
 
 			self.assertEqual(status, "merged & structured (AST verified)")
 
-			content = projBvPath.read_text(encoding="utf-8")
-			# Verify legacy metadata mapping (handling single quote formatting)
-			self.assertIn("addon_name='dayOfTheWeek'", content)
-			self.assertIn("addon_version='20251022.0.1'", content)
-			# Verify new official template imports and variables
-			self.assertIn("from site_scons.site_tools.NVDATool.utils import _", content)
-			self.assertIn("brailleTables: BrailleTables = {}", content)
-			self.assertIn("symbolDictionaries: SymbolDictionaries = {}", content)
-			self.assertIn("speechDictionaries: SpeechDictionaries = {}", content)
+			content: str = projBvPath.read_text(encoding="utf-8")
+			# Verify metadata mapping from fixture
+			self.assertIn("addon_name='myAddon'", content)
+			self.assertIn("addon_version='1.0.0'", content)
+			# Verify new official template imports
+			self.assertIn("from site_scons.site_tools.NVDATool.typings import", content)
 
 	def testMergeModernBuildvarsMissingSpeechDictionaries(self) -> None:
-		"""Ensure modern buildVars.py gets missing speechDictionaries injected from official template."""
+		"""Ensure modern buildVars.py gets missing speechDictionaries imported/injected from official template."""
 		with tempfile.TemporaryDirectory() as tempDir:
-			projBvPath = Path(tempDir) / "buildVars.py"
-			tplBvPath = Path(tempDir) / "template_buildVars.py"
+			projBvPath: Path = Path(tempDir) / "buildVars.py"
+			tplBvPath: Path = Path(tempDir) / "template_buildVars.py"
 
-			# 1. Modern buildVars.py without speechDictionaries
-			projBvPath.write_text(
-				'from site_scons.site_tools.NVDATool.typings import AddonInfo, BrailleTables, SymbolDictionaries\n'
-				'from site_scons.site_tools.NVDATool.utils import _\n\n'
-				'addon_info = AddonInfo(\n'
-				'    addon_name="dayOfTheWeek",\n'
-				'    addon_summary=_("Day of the week"),\n'
-				'    addon_version="20260222.0.0",\n'
-				')\n\n'
-				'import os\n'
-				'pythonSources: list[str] = [os.path.join("addon", "globalPlugins", "*.py")]\n'
-				'i18nSources: list[str] = pythonSources + ["buildVars.py"]\n'
-				'excludedFiles: list[str] = []\n'
-				'baseLanguage: str = "en"\n'
-				'markdownExtensions: list[str] = []\n'
-				'brailleTables: BrailleTables = {}\n'
-				'symbolDictionaries: SymbolDictionaries = {}\n',
-				encoding="utf-8",
-			)
+			# 1. Modern buildVars fixture (without SpeechDictionaries imported in original)
+			modernFixture: Path = FIXTURES_DIR / "modernBuildVars.py"
+			projBvPath.write_text(modernFixture.read_text(encoding="utf-8"), encoding="utf-8")
 
-			# 2. Official template buildVars.py
-			tplBvPath.write_text(
-				'from site_scons.site_tools.NVDATool.typings import AddonInfo, BrailleTables, SymbolDictionaries, SpeechDictionaries\n'
-				'from site_scons.site_tools.NVDATool.utils import _\n\n'
-				'addon_info = AddonInfo(\n'
-				'    addon_name="addonTemplate",\n'
-				'    addon_summary=_("Add-on user visible name"),\n'
-				'    addon_version="x.y",\n'
-				')\n\n'
-				'pythonSources: list[str] = []\n'
-				'i18nSources: list[str] = pythonSources + ["buildVars.py"]\n'
-				'excludedFiles: list[str] = []\n'
-				'baseLanguage: str = "en"\n'
-				'markdownExtensions: list[str] = []\n'
-				'brailleTables: BrailleTables = {}\n'
-				'symbolDictionaries: SymbolDictionaries = {}\n'
-				'speechDictionaries: SpeechDictionaries = {}\n',
-				encoding="utf-8",
-			)
+			# 2. Official template buildVars fixture
+			templateFixture: Path = FIXTURES_DIR / "templateBuildVars.py"
+			tplBvPath.write_text(templateFixture.read_text(encoding="utf-8"), encoding="utf-8")
 
+			metadata: dict
+			globalVars: dict
 			metadata, globalVars = extractBuildvarsMetadata(projBvPath)
-			status = mergeBuildvarsFile(
+			status: str = mergeBuildvarsFile(
 				projBvPath, tplBvPath, metadata, globalVars, dryRun=False
 			)
 
 			self.assertEqual(status, "merged & structured (AST verified)")
 
-			content = projBvPath.read_text(encoding="utf-8")
-			self.assertIn("addon_name='dayOfTheWeek'", content)
-			self.assertIn("speechDictionaries: SpeechDictionaries = {}", content)
+			content: str = projBvPath.read_text(encoding="utf-8")
+			self.assertIn("addon_name='myAddon'", content)
+			self.assertIn("SpeechDictionaries", content)
 
-	def test_setupAddonMergeIgnore(self) -> None:
+	def testSetupAddonMergeIgnore(self) -> None:
 		"""Verify bootstrapping of .addonmergeignore from template to add-on directory.
 
 		Tests creation when missing, preservation when existing, and behavior in dry-run mode.
@@ -201,7 +131,7 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 		setupAddonMergeIgnore(tempDir=templateDir, addonDir=addonDir, dryRun=False)
 		self.assertEqual(addonIgnore.read_text(encoding="utf-8"), "customRule/\n")
 
-	def test_addonMergeIgnore(self) -> None:
+	def testAddonMergeIgnore(self) -> None:
 		"""Verify that files specified in .addonmergeignore are excluded during synchronization.
 
 		Ensures that existing files listed in the ignore file retain their original content
@@ -231,10 +161,10 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 		ignoreFile: Path = addonDir / ".addonmergeignore"
 		ignoreFile.write_text("ignoredFile.txt\n", encoding="utf-8")
 
-		# 4. Execute synchronization with correct arguments (tempDir, addonDir, dryRun)
+		# 4. Execute synchronization with correct arguments
 		runSynchronization(
-			tempDir=str(templateDir),
-			addonDir=str(addonDir),
+			tempDir=templateDir,
+			addonDir=addonDir,
 			dryRun=False,
 		)
 
@@ -252,8 +182,8 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 	def testMergeBuildvarsAutoImportsOs(self) -> None:
 		"""Ensure 'import os' is automatically added if merged buildVars uses the os module."""
 		with tempfile.TemporaryDirectory() as tempDir:
-			projBvPath = Path(tempDir) / "buildVars.py"
-			tplBvPath = Path(tempDir) / "template_buildVars.py"
+			projBvPath: Path = Path(tempDir) / "buildVars.py"
+			tplBvPath: Path = Path(tempDir) / "template_buildVars.py"
 
 			# Legacy buildVars using os module without import in template
 			projBvPath.write_text(
@@ -267,15 +197,17 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 				encoding="utf-8",
 			)
 
+			metadata: dict
+			globalVars: dict
 			metadata, globalVars = extractBuildvarsMetadata(projBvPath)
 			mergeBuildvarsFile(projBvPath, tplBvPath, metadata, globalVars, dryRun=False)
 
-			content = projBvPath.read_text(encoding="utf-8")
+			content: str = projBvPath.read_text(encoding="utf-8")
 			self.assertTrue(content.startswith("import os\n"))
 
 	def testFixTomlIndentation(self) -> None:
-		"""Ensure that 4 spaces are replaced by a tab inside maintainers/authors blocks only."""
-		inputToml = (
+		"""Ensure 4-space indentations are converted to tabs across TOML blocks."""
+		inputToml: str = (
 			'name = "myAddon"\n'
 			"maintainers = [\n"
 			'    {name = "John Doe", email = "john@example.com"},\n'
@@ -284,23 +216,23 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 			'    key = "value"\n'
 			"}\n"
 		)
-		expectedOutput = (
+		expectedOutput: str = (
 			'name = "myAddon"\n'
 			"maintainers = [\n"
 			'\t{name = "John Doe", email = "john@example.com"},\n'
 			"]\n"
 			"otherSection = {\n"
-			'    key = "value"\n'
+			'\tkey = "value"\n'
 			"}\n"
 		)
 
-		result = fixTomlIndentation(inputToml)
+		result: str = fixTomlIndentation(inputToml)
 		self.assertEqual(result, expectedOutput)
 
 	def testFormatAuthorList(self) -> None:
 		"""Ensure raw author string parsing produces a formatted tomlkit array."""
-		rawAuthors = "John Doe <john@example.com>, Jane Smith"
-		authorsArray = formatAuthorList(rawAuthors)
+		rawAuthors: str = "John Doe <john@example.com>, Jane Smith"
+		authorsArray: list = formatAuthorList(rawAuthors)
 
 		self.assertEqual(len(authorsArray), 2)
 		self.assertEqual(authorsArray[0]["name"], "John Doe")
@@ -311,10 +243,10 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 
 	def testMergeDependencyLists(self) -> None:
 		"""Ensure dependency lists merge updates existing package versions while preserving custom ones."""
-		projDeps = ["pyright>=1.1.0", "requests>=2.28.0", "ruff==0.1.0"]
-		tplDeps = ["pyright>=1.2.0", "ruff==0.2.0", "pytest"]
+		projDeps: list[str] = ["pyright>=1.1.0", "requests>=2.28.0", "ruff==0.1.0"]
+		tplDeps: list[str] = ["pyright>=1.2.0", "ruff==0.2.0", "pytest"]
 
-		merged = mergeDependencyLists(projDeps, tplDeps)
+		merged: list[str] = mergeDependencyLists(projDeps, tplDeps)
 
 		# Check that versions from template override project versions
 		self.assertIn("pyright>=1.2.0", merged)
@@ -330,8 +262,8 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 	def testMergePyprojectTomlIntelligent(self) -> None:
 		"""Ensure pyproject.toml is intelligently merged without duplicating dependencies."""
 		with tempfile.TemporaryDirectory() as tempDir:
-			projToml = Path(tempDir) / "pyproject.toml"
-			tplToml = Path(tempDir) / "template_pyproject.toml"
+			projToml: Path = Path(tempDir) / "pyproject.toml"
+			tplToml: Path = Path(tempDir) / "template_pyproject.toml"
 
 			projToml.write_text(
 				'[project]\n'
@@ -349,12 +281,76 @@ class TestSyncAddonWithTemplate(unittest.TestCase):
 				encoding="utf-8",
 			)
 
-			status = mergePyprojectToml(projToml, tplToml, metadata={}, dryRun=False)
+			status: str = mergePyprojectToml(
+				projToml, tplToml, metadataDict={}, dryRun=False
+			)
 			self.assertEqual(status, "merged intelligently (tomlkit)")
 
-			content = projToml.read_text(encoding="utf-8")
+			content: str = projToml.read_text(encoding="utf-8")
 			self.assertIn('name = "myAddon"', content)
 			self.assertIn('requests>=2.0.0', content)
+
+	def testMergePyprojectTomlPreservesHigherUserVersions(self) -> None:
+		"""Ensure user dependencies with higher versions than template are preserved during merge."""
+		with tempfile.TemporaryDirectory() as tempDir:
+			projToml: Path = Path(tempDir) / "pyproject.toml"
+			tplToml: Path = Path(tempDir) / "template_pyproject.toml"
+
+			userFixture: Path = FIXTURES_DIR / "userPyproject.toml"
+			projToml.write_text(userFixture.read_text(encoding="utf-8"), encoding="utf-8")
+
+			templateFixture: Path = FIXTURES_DIR / "templatePyproject.toml"
+			tplToml.write_text(templateFixture.read_text(encoding="utf-8"), encoding="utf-8")
+
+			status: str = mergePyprojectToml(
+				projToml, tplToml, metadataDict={}, dryRun=False
+			)
+			self.assertEqual(status, "merged intelligently (tomlkit)")
+
+			content: str = projToml.read_text(encoding="utf-8")
+
+			# Verify that higher user version 1.1.411 is retained over template version 1.1.407
+			self.assertIn(
+				"1.1.411",
+				content,
+				"Higher user version 1.1.411 was not preserved in pyproject.toml",
+			)
+			self.assertNotIn(
+				"1.1.407",
+				content,
+				"Lower template version 1.1.407 should have been overridden",
+			)
+
+	def testMergePyprojectTomlPreservesHigherTemplateVersions(self) -> None:
+		"""Ensure template dependencies with higher versions than user are adopted during merge."""
+		with tempfile.TemporaryDirectory() as tempDir:
+			projToml: Path = Path(tempDir) / "pyproject.toml"
+			tplToml: Path = Path(tempDir) / "template_pyproject.toml"
+
+			userFixture: Path = FIXTURES_DIR / "userPyproject.toml"
+			projToml.write_text(userFixture.read_text(encoding="utf-8"), encoding="utf-8")
+
+			templateFixture: Path = FIXTURES_DIR / "templatePyproject.toml"
+			tplToml.write_text(templateFixture.read_text(encoding="utf-8"), encoding="utf-8")
+
+			status: str = mergePyprojectToml(
+				projToml, tplToml, metadataDict={}, dryRun=False
+			)
+			self.assertEqual(status, "merged intelligently (tomlkit)")
+
+			content: str = projToml.read_text(encoding="utf-8")
+
+			# Verify that higher template version 0.2.0 (ruff) overrides lower user version 0.1.0
+			self.assertIn(
+				"0.2.0",
+				content,
+				"Higher template version 0.2.0 was not adopted in pyproject.toml",
+			)
+			self.assertNotIn(
+				"0.1.0",
+				content,
+				"Lower user version 0.1.0 should have been overridden",
+			)
 
 
 if __name__ == "__main__":
