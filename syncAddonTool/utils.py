@@ -64,6 +64,7 @@ def fixTomlIndentation(tomlContentText: str) -> str:
 		fixedLines.append(lineItem)
 
 	outputText: str = "".join(fixedLines)
+	outputText = re.sub(r"\n{3,}", "\n\n", outputText)
 	if not outputText.endswith("\n"):
 		outputText += "\n"
 	return outputText
