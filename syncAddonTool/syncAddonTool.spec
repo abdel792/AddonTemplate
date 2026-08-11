@@ -72,7 +72,7 @@ VERSION_FILE_PATH.write_text(str(version_info), encoding="utf-8")
 # PyInstaller Analysis and Collection
 # -----------------------------------------------------------------------------
 a = Analysis(
-	["syncAddonWithTemplate.py"],
+	["__main__.py"],
 	pathex=[str(ROOT_DIR)],
 	binaries=[],
 	datas=[],

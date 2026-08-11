@@ -29,15 +29,15 @@ def load_tests(
 	Enforces test execution in source code definition order using class dict insertion order.
 	"""
 	orderIndex: dict[str, int] = {
-		name: i for i, name in enumerate(TestSyncAddonWithTemplate.__dict__)
+		name: i for i, name in enumerate(TestSyncAddonTool.__dict__)
 	}
 	loader.sortTestMethodsUsing = (
 		lambda a, b: orderIndex.get(a, 999) - orderIndex.get(b, 999)
 	)
-	return loader.loadTestsFromTestCase(TestSyncAddonWithTemplate)
+	return loader.loadTestsFromTestCase(TestSyncAddonTool)
 
 
-class TestSyncAddonWithTemplate(unittest.TestCase):
+class TestSyncAddonTool(unittest.TestCase):
 	"""Test cases for checking synchronization logic and file merges."""
 
 	def testMergeLegacyBuildvarsWithOfficialTemplate(self) -> None:

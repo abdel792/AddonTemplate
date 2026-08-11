@@ -28,7 +28,7 @@ You can run individual test modules during development by specifying their path:
 
 * **Add-on Synchronization Tool Tests:**
   ``` bash
-  uv run python -m unittest -v tests/unit/template/test_syncAddonWithTemplate.py
+  uv run python -m unittest -v tests/unit/template/test_syncAddonTool
   ```
 
 ---
