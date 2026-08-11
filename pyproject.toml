@@ -81,8 +81,6 @@ exclude = [
 	"__pycache__",
 	".venv",
 	"buildVars.py",
-	"syncAddonWithTemplate.py",
-	"syncAddonTool.spec",
 	"syncAddonTool",
 	"tests",
 ]
@@ -123,8 +121,6 @@ exclude = [
 	".venv",
 	"site_scons",
 	".github/scripts",
-	"syncAddonWithTemplate.py",
-	"syncAddonTool.spec",
 	"syncAddonTool",
 	"tests",
 	# When excluding concrete paths relative to a directory,
