@@ -254,25 +254,13 @@ Downloads the latest remote template, creates a safety backup of your repository
   uv run python syncAddonTool
   ```
 
-- **Syntax B (Module execution inside the add-on repository)**:
+- **Syntax B (Targeting an external add-on directory)**:
 
   ```sh
-  uv run python -m syncAddonTool
+  uv run python syncAddonTool -ad /path/to/my-nvda-addon
   ```
 
-- **Syntax C (Module path execution inside the add-on repository)**:
-
-  ```sh
-  uv run python -m syncAddonTool.py
-  ```
-
-- **Syntax D (Targeting an external add-on directory)**:
-
-  ```sh
-  uv run python -m syncAddonTool -ad /path/to/my-nvda-addon
-  ```
-
-- **Syntax E (Standalone executable)**:
+- **Syntax C (Standalone executable)**:
 
   ```cmd
   syncAddonTool.exe -ad C:\path\to\my-nvda-addon
@@ -288,25 +276,13 @@ Useful when testing local modifications applied to `AddonTemplate` or when worki
   uv run python syncAddonTool -td /path/to/local/AddonTemplate
   ```
 
-- **Syntax B (Module execution inside the add-on repository)**:
+- **Syntax B (Targeting an external add-on directory)**:
 
   ```sh
-  uv run python -m syncAddonTool -td /path/to/local/AddonTemplate
+  uv run python syncAddonTool -ad /path/to/my-nvda-addon -td /path/to/local/AddonTemplate
   ```
 
-- **Syntax C (Module path execution inside the add-on repository)**:
-
-  ```sh
-  uv run python -m syncAddonTool.py -td /path/to/local/AddonTemplate
-  ```
-
-- **Syntax D (Targeting an external add-on directory)**:
-
-  ```sh
-  uv run python -m syncAddonTool -ad /path/to/my-nvda-addon -td /path/to/local/AddonTemplate
-  ```
-
-- **Syntax E (Standalone executable)**:
+- **Syntax D (Standalone executable)**:
 
   ```cmd
   syncAddonTool.exe -ad C:\path\to\my-nvda-addon -td C:\path\to\local\AddonTemplate
@@ -322,25 +298,13 @@ Analyzes structural layouts, evaluates configurations, reads `.addonmergeignore`
   uv run python syncAddonTool --dry-run
   ```
 
-- **Syntax B (Module execution inside the add-on repository)**:
+- **Syntax B (Targeting an external add-on directory)**:
 
   ```sh
-  uv run python -m syncAddonTool --dry-run
+  uv run python syncAddonTool --dry-run -ad /path/to/my-nvda-addon
   ```
 
-- **Syntax C (Module path execution inside the add-on repository)**:
-
-  ```sh
-  uv run python -m syncAddonTool.py --dry-run
-  ```
-
-- **Syntax D (Targeting an external add-on directory)**:
-
-  ```sh
-  uv run python -m syncAddonTool --dry-run -ad /path/to/my-nvda-addon
-  ```
-
-- **Syntax E (Standalone executable)**:
+- **Syntax C (Standalone executable)**:
 
   ```cmd
   syncAddonTool.exe --dry-run -ad C:\path\to\my-nvda-addon
@@ -356,25 +320,13 @@ Targets a project repository while skipping the automated safety backup creation
   uv run python syncAddonTool --skip-backup
   ```
 
-- **Syntax B (Module execution inside the add-on repository)**:
+- **Syntax B (Targeting an external add-on directory)**:
 
   ```sh
-  uv run python -m syncAddonTool --skip-backup
+  uv run python syncAddonTool -ad /path/to/my-nvda-addon --skip-backup
   ```
 
-- **Syntax C (Module path execution inside the add-on repository)**:
-
-  ```sh
-  uv run python -m syncAddonTool.py --skip-backup
-  ```
-
-- **Syntax D (Targeting an external add-on directory)**:
-
-  ```sh
-  uv run python -m syncAddonTool -ad /path/to/my-nvda-addon --skip-backup
-  ```
-
-- **Syntax E (Standalone executable)**:
+- **Syntax C (Standalone executable)**:
 
   ```cmd
   syncAddonTool.exe -ad C:\path\to\my-nvda-addon --skip-backup
@@ -394,12 +346,6 @@ If you wish to execute the synchronization tool without installing its required 
 
   ```sh
   uv run --with tomlkit python -m syncAddonTool
-  ```
-
-- **Using module path execution with `uv`**:
-
-  ```sh
-  uv run --with tomlkit python -m syncAddonTool.py
   ```
 
 - **Using Standalone Executable**:
