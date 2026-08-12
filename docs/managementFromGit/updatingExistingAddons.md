@@ -171,6 +171,7 @@ You can execute the tool with various command-line arguments to customize the up
 | `-td` | `--template-dir` | Path to a local clone/directory of the NVDA `AddonTemplate`. When provided, the tool skips fetching the template via Git and synchronizes directly using this local reference. | None (clones from GitHub) |
 | `-dr` | `--dry-run` | Simulates the execution. It analyzes structure, logs planned changes, and builds reports without writing or modifying any file on disk. | Disabled |
 | `-s` | `--skip-backup` | Disables the automatic creation of a timestamped backup directory (e.g., `addonName_bak_YYYYMMDD_HHMMSS`) before processing updates. | Disabled (Backup is created) |
+| `-v` | `--verbose` | Enables detailed debug logging output (`[DEBUG]` level) in the console/log output. | Disabled (`[INFO]` level) |
 | `-h` | `--help` | Displays the default automated help menu listing all available parameters. | N/A |
 
 ##### 1. Generating the Executable

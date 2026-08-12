@@ -61,7 +61,11 @@ def createPyprojectFromTemplate(templateFilePath: Path, metadataDict: dict[str, 
 	return tomlDoc
 
 
-def mergeDependencyLists(projList: list[Any], tplList: list[Any]) -> list[Any]:
+def mergeDependencyLists(
+	projList: list[Any],
+	tplList: list[Any],
+	contextName: str = "",
+) -> list[Any]:
 	"""Intelligently merge two dependency lists by updating package versions based on base names.
 
 	Preserves custom user dependencies and retains user version constraints strictly
@@ -70,9 +74,30 @@ def mergeDependencyLists(projList: list[Any], tplList: list[Any]) -> list[Any]:
 
 	:param projList: The existing project's dependency list.
 	:param tplList: The template's dependency list.
+	:param contextName: Optional key/section name for logging context.
 	:return: A merged list with updated versions and preserved custom or newer user items.
 	"""
-	logger.debug("Merging dependency lists. User count: %d, Template count: %d", len(projList), len(tplList))
+	isActualDependencyList: bool = contextName in ["dependencies", "dependency-groups"]
+	# Only emit decision logs if processing dependency-groups, preventing duplicate
+	# or premature decision logs on flat project.dependencies before migration/purge.
+	shouldLogDecisions: bool = contextName != "dependencies" and isActualDependencyList
+
+	if projList or tplList:
+		contextLabel: str = f" [{contextName}]" if contextName else ""
+		if isActualDependencyList:
+			logger.debug(
+				"Merging dependency list%s. User count: %d, Template count: %d",
+				contextLabel,
+				len(projList),
+				len(tplList),
+			)
+		else:
+			logger.debug(
+				"Merging list%s. User count: %d, Template count: %d",
+				contextLabel,
+				len(projList),
+				len(tplList),
+			)
 
 	projIndexByBase: dict[str, int] = {}
 	itemIndex: int
@@ -97,13 +122,14 @@ def mergeDependencyLists(projList: list[Any], tplList: list[Any]) -> list[Any]:
 				userOriginalBaseName: str = getBasePackageName(userItemText)
 
 				if userOriginalBaseName in REPLACED_PACKAGES:
-					logger.debug(
-						"DECISION [%s]: PACKAGE REPLACED (%s -> %s), FORCING TEMPLATE VERSION -> %r",
-						tplBaseName,
-						userOriginalBaseName,
-						tplBaseName,
-						tplItem,
-					)
+					if shouldLogDecisions:
+						logger.debug(
+							"DECISION [%s]: PACKAGE REPLACED (%s -> %s), FORCING TEMPLATE VERSION -> %r",
+							tplBaseName,
+							userOriginalBaseName,
+							tplBaseName,
+							tplItem,
+						)
 					mergedList.append(tplItem)
 					continue
 
@@ -116,29 +142,32 @@ def mergeDependencyLists(projList: list[Any], tplList: list[Any]) -> list[Any]:
 						tplVersionTuple: tuple[int, ...] = tuple(map(int, tplMatch.group(1).split(".")))
 
 						if userVersionTuple > tplVersionTuple:
-							logger.debug(
-								"DECISION [%s]: KEEP USER VERSION (%s > %s) -> %r",
-								tplBaseName,
-								userVersionTuple,
-								tplVersionTuple,
-								userItemText,
-							)
+							if shouldLogDecisions:
+								logger.debug(
+									"DECISION [%s]: KEEP USER VERSION (%s > %s) -> %r",
+									tplBaseName,
+									userVersionTuple,
+									tplVersionTuple,
+									userItemText,
+								)
 							mergedList.append(userItemText)
 							continue
 						else:
-							logger.debug(
-								"DECISION [%s]: USE TEMPLATE VERSION (%s <= %s) -> %r",
-								tplBaseName,
-								userVersionTuple,
-								tplVersionTuple,
-								tplItem,
-							)
+							if shouldLogDecisions:
+								logger.debug(
+									"DECISION [%s]: USE TEMPLATE VERSION (%s <= %s) -> %r",
+									tplBaseName,
+									userVersionTuple,
+									tplVersionTuple,
+									tplItem,
+								)
 					except ValueError:
 						pass
 
 				mergedList.append(tplItem)
 			else:
-				logger.debug("DECISION [%s]: ADD TEMPLATE DEPENDENCY %r", tplBaseName, tplItem)
+				if shouldLogDecisions:
+					logger.debug("DECISION [%s]: ADD TEMPLATE DEPENDENCY %r", tplBaseName, tplItem)
 				mergedList.append(tplItem)
 		else:
 			if tplItem not in mergedList:
@@ -149,9 +178,15 @@ def mergeDependencyLists(projList: list[Any], tplList: list[Any]) -> list[Any]:
 			if isinstance(depItem, str):
 				baseName = getBasePackageName(depItem)
 				if baseName in REPLACED_PACKAGES:
-					logger.debug("DECISION [%s]: REPLACED BY TEMPLATE EQUIVALENT %r", baseName, REPLACED_PACKAGES[baseName])
+					if shouldLogDecisions:
+						logger.debug(
+							"DECISION [%s]: REPLACED BY TEMPLATE EQUIVALENT %r",
+							baseName,
+							REPLACED_PACKAGES[baseName],
+						)
 					continue
-			logger.debug("DECISION [custom]: PRESERVE USER DEPENDENCY %r", depItem)
+			if shouldLogDecisions:
+				logger.debug("DECISION [custom]: PRESERVE USER DEPENDENCY %r", depItem)
 			mergedList.append(depItem)
 
 	return mergedList
@@ -172,7 +207,7 @@ def deepMergeDicts(projDict: dict[str, Any], tplDict: dict[str, Any]) -> dict[st
 			if isinstance(projVal, MutableMapping) and isinstance(dictValue, MutableMapping):
 				deepMergeDicts(projVal, dictValue)
 			elif isinstance(projVal, MutableSequence) and isinstance(dictValue, MutableSequence):
-				projDict[dictKey] = mergeDependencyLists(list(projVal), list(dictValue))
+				projDict[dictKey] = mergeDependencyLists(list(projVal), list(dictValue), contextName=dictKey)
 			else:
 				pass
 		else:
@@ -284,6 +319,7 @@ def processDependencyGroupsMigration(
 				if canonicalBaseName in migratedBaseNamesSet:
 					logger.debug("Purging migrated dependency from flat list: %r", depItem)
 					continue
+			logger.debug("DECISION [custom]: PRESERVE USER DEPENDENCY IN PROJECT.DEPENDENCIES %r", depItem)
 			filteredProjectDepsList.append(depItem)
 
 		mergedDictData["project"]["dependencies"] = filteredProjectDepsList
