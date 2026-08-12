@@ -192,22 +192,28 @@ def mergeDependencyLists(
 	return mergedList
 
 
-def deepMergeDicts(projDict: dict[str, Any], tplDict: dict[str, Any]) -> dict[str, Any]:
+def deepMergeDicts(
+	projDict: dict[str, Any],
+	tplDict: dict[str, Any],
+	parentPath: str = "",
+) -> dict[str, Any]:
 	"""Recursively merge tplDict into projDict.
 
 	:param projDict: The original project dictionary to be updated.
 	:param tplDict: The template dictionary whose values will be merged into projDict.
+	:param parentPath: Optional accumulated section prefix for context logging (e.g., 'tool.ruff').
 	:return: The updated projDict with merged values from tplDict.
 	"""
 	dictKey: str
 	dictValue: Any
 	for dictKey, dictValue in tplDict.items():
+		fullPath: str = f"{parentPath}.{dictKey}" if parentPath else dictKey
 		if dictKey in projDict:
 			projVal: Any = projDict[dictKey]
 			if isinstance(projVal, MutableMapping) and isinstance(dictValue, MutableMapping):
-				deepMergeDicts(projVal, dictValue)
+				deepMergeDicts(projVal, dictValue, parentPath=fullPath)
 			elif isinstance(projVal, MutableSequence) and isinstance(dictValue, MutableSequence):
-				projDict[dictKey] = mergeDependencyLists(list(projVal), list(dictValue), contextName=dictKey)
+				projDict[dictKey] = mergeDependencyLists(list(projVal), list(dictValue), contextName=fullPath)
 			else:
 				pass
 		else:
