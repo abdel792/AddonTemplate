@@ -82,7 +82,6 @@ a = Analysis(
 		"syncAddonTool.buildVarsSync",
 		"syncAddonTool.pyproject",
 		"tomlkit",
-		"pathspec",
 	],
 	hookspath=[],
 	hooksconfig={},
