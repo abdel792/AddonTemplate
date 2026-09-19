@@ -42,7 +42,7 @@ As AddonTemplate evolves, it receives improvements, bug fixes, new GitHub workfl
 
 You can merge the latest template changes into your repository instead of manually copying updated files.
 
-*This document explains the update procedures, including both the recommended automated method using `syncAddonTool` and the manual Git merge workflow."*
+*This document explains the update procedures, including both the recommended automated method using `syncAddonTool` and the manual Git merge workflow.*
 
 > [!NOTE]
 > Updating from AddonTemplate only affects your project's infrastructure (build scripts, GitHub workflows, configuration files, etc.). It does **not** modify your add-on's source code.
@@ -167,9 +167,11 @@ You can execute the tool with various command-line arguments to customize the up
 
 | Short Flag | Long Argument | Description | Default Value |
 | :--- | :--- | :--- | :--- |
-| `-ad` | `--addon-dir` | Path to the root directory of the local add-on you want to update. If not specified, the script automatically walks up from your current directory to find `buildVars.py`. | Current working directory |
+| `-ad` | `--addon-dir` | Path to the root directory of the local add-on you want to update.
+If not specified, the script automatically walks up from your current directory to find `buildVars.py`. | Current working directory |
 | `-td` | `--template-dir` | Path to a local clone/directory of the NVDA `AddonTemplate`. When provided, the tool skips fetching the template via Git and synchronizes directly using this local reference. | None (clones from GitHub) |
-| `-dr` | `--dry-run` | Simulates the execution. It analyzes structure, logs planned changes, and builds reports without writing or modifying any file on disk. | Disabled |
+| `-dr` | `--dry-run` | Simulates the execution.
+It analyzes structure, logs planned changes, and builds reports without writing or modifying any file on disk. | Disabled |
 | `-s` | `--skip-backup` | Disables the automatic creation of a timestamped backup directory (e.g., `addonName_bak_YYYYMMDD_HHMMSS`) before processing updates. | Disabled (Backup is created) |
 | `-v` | `--verbose` | Enables detailed debug logging output (`[DEBUG]` level) in the console/log output. | Disabled (`[INFO]` level) |
 | `-h` | `--help` | Displays the default automated help menu listing all available parameters. | N/A |
@@ -210,9 +212,10 @@ This architectural design allows developers to cleanly decouple their project-sp
 
 To declare custom exceptions, create a plain text file named `.addonmergeignore` and place it directly **at the root of your target add-on repository**.
 
-- Inside this file, list the names, relative paths, or glob patterns of the files or folders you want the tool to skip during synchronization.
-- The file uses standard `.gitignore` pattern matching syntax (parsed via `pathspec`).
-- You can write one pattern per line. Empty lines and lines starting with `#` are automatically treated as comments and ignored.
+- Inside this file, list the exact relative paths, sub-folder paths, or pattern rules of the files or folders you want the tool to skip during synchronization.
+- Patterns are matched using standard `fnmatch` rules (with support for `!` prefix to unprotect specific sub-paths).
+- You can write one pattern per line.
+Empty lines and lines starting with `#` are automatically treated as comments and ignored.
 
 For instance, if you wish to prevent the synchronization process from overwriting your custom execution scripts or specific workflows, simply add them to the file:
 
@@ -227,10 +230,12 @@ addon/doc/fr/custom-extra-help.html
 ##### Crucial Requirements & Design Constraints
 
 1. **Automatic Self-Exclusion:**
-   The update tool automatically protects `.addonmergeignore` itself from being overwritten during synchronization. Even if `.addonmergeignore` is present in the template repository, the target add-on's local `.addonmergeignore` file is preserved without needing to explicitly list itself.
+   The update tool automatically protects `.addonmergeignore` itself from being overwritten during synchronization.
+   Even if `.addonmergeignore` is present in the template repository, the target add-on's local `.addonmergeignore` file is preserved without needing to explicitly list itself.
 
 2. **Presence Check on Initial Run:**
-   Before copying or updating any template files, the script explicitly checks whether `.addonmergeignore` is already present or absent at the root of the target add-on repository. If present, its custom rules are loaded immediately before processing any file transfers.
+   Before copying or updating any template files, the script explicitly checks whether `.addonmergeignore` is already present or absent at the root of the target add-on repository.
+   If present, its custom rules are loaded immediately before processing any file transfers.
 
 3. **Case-Insensitivity:**
    The update tool evaluates exclusions using a standardized, case-insensitive matching algorithm.
@@ -283,7 +288,7 @@ Useful when testing local modifications applied to `AddonTemplate` or when worki
   uv run python syncAddonTool -ad /path/to/my-nvda-addon -td /path/to/local/AddonTemplate
   ```
 
-- **Syntax D (Standalone executable)**:
+- **Syntax C (Standalone executable)**:
 
   ```cmd
   syncAddonTool.exe -ad C:\path\to\my-nvda-addon -td C:\path\to\local\AddonTemplate
