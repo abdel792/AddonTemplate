@@ -14,6 +14,26 @@ from .astUtils import parseAstDict, parseAstKeywords, replaceAstRange, usesOsMod
 logger: logging.Logger = logging.getLogger("syncAddon")
 
 
+def formatStringLiteral(val: str, useDoubleQuotes: bool = False, isTranslatable: bool = False) -> str:
+	"""Format a string literal preserving either double or single quotes.
+
+	:param val: The string value to format.
+	:param useDoubleQuotes: If True, format using double quotes; otherwise default to single quotes.
+	:param isTranslatable: If True, wrap the formatted string in the gettext `_()` call.
+	:return: The formatted string literal representation, optionally wrapped in `_()`.
+	"""
+	formattedText: str
+	if useDoubleQuotes:
+		# Escape backslashes and internal double quotes if needed
+		escapedValText: str = val.replace("\\", "\\\\").replace('"', '\\"')
+		formattedText = f'"{escapedValText}"'
+	else:
+		# Default style using repr (single quotes)
+		formattedText = repr(val)
+
+	return f"_({formattedText})" if isTranslatable else formattedText
+
+
 def extractBuildvarsMetadata(filePath: str | Path) -> tuple[dict[str, Any], dict[str, tuple[ast.AST, str]]]:
 	"""Extract metadata and raw assignment expressions along with AST nodes from buildVars.py safely.
 
@@ -57,11 +77,16 @@ def extractBuildvarsMetadata(filePath: str | Path) -> tuple[dict[str, Any], dict
 				elif isinstance(astNodeItem.value, ast.Call) and getattr(astNodeItem.value.func, "id", None) == "AddonInfo":
 					metadataDict.update(parseAstKeywords(astNodeItem.value.keywords))
 			elif varNameText in topLevelVarsSet:
-				globalVarsDict[varNameText] = (astNodeItem.value, ast.unparse(astNodeItem.value))
+				# Preserve raw source segment to maintain original quote formatting
+				rawSegmentText: str | None = ast.get_source_segment(tplContentText if 'tplContentText' in locals() else f.read(), astNodeItem.value) if False else None
+				# Note: Read source directly or fallback to ast.unparse
+				sourceSegmentText: str = ast.get_source_segment(fileRootPath.read_text(encoding="utf-8"), astNodeItem.value) or ast.unparse(astNodeItem.value)
+				globalVarsDict[varNameText] = (astNodeItem.value, sourceSegmentText)
 		elif isinstance(astNodeItem, ast.AnnAssign):
 			if isinstance(astNodeItem.target, ast.Name) and astNodeItem.target.id in topLevelVarsSet:
 				if astNodeItem.value is not None:
-					globalVarsDict[astNodeItem.target.id] = (astNodeItem.value, ast.unparse(astNodeItem.value))
+					sourceSegmentText = ast.get_source_segment(fileRootPath.read_text(encoding="utf-8"), astNodeItem.value) or ast.unparse(astNodeItem.value)
+					globalVarsDict[astNodeItem.target.id] = (astNodeItem.value, sourceSegmentText)
 
 	return metadataDict, globalVarsDict
 
@@ -113,7 +138,17 @@ def mergeBuildvarsFile(
 						formattedValueText = "None"
 					elif isinstance(valueVal, str):
 						isTranslatable: bool = keyName in ["addon_summary", "addon_description", "addon_changelog"]
-						formattedValueText = f"_({valueVal!r})" if isTranslatable else repr(valueVal)
+						
+						# Inspect source segment to detect original quote style (double vs single)
+						rawSourceText: str = ast.get_source_segment(tplContentText, kwItem.value) or ""
+						cleanedSourceText: str = rawSourceText.strip()
+						useDoubleQuotesBool: bool = cleanedSourceText.startswith('"') or cleanedSourceText.startswith('_("')
+						
+						formattedValueText = formatStringLiteral(
+							valueVal,
+							useDoubleQuotes=useDoubleQuotesBool,
+							isTranslatable=isTranslatable,
+						)
 					else:
 						formattedValueText = str(valueVal)
 
