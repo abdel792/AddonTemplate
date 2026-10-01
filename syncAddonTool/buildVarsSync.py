@@ -29,7 +29,7 @@ def extractBuildvarsMetadata(filePath: str | Path) -> tuple[dict[str, Any], dict
 			parsedTree: ast.AST = ast.parse(f.read())
 		except SyntaxError as syntaxErrorObj:
 			logger.error("Syntax error while reading %s: %s", fileRootPath, syntaxErrorObj)
-			return {}, {}
+			raise
 
 	metadataDict: dict[str, Any] = {}
 	globalVarsDict: dict[str, tuple[ast.AST, str]] = {}
