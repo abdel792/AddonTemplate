@@ -141,7 +141,7 @@ def main() -> None:
 			if sys.stdin.isatty():
 				input("\nPress Enter to exit...")
 			sys.exit(1)
-		runSynchronization(templatePath, addonDir, parsedArgs.dryRun)
+		syncSuccess: bool = runSynchronization(templatePath, addonDir, parsedArgs.dryRun)
 	else:
 		logger.info("Phase 3: Provisioning latest official NVDA AddonTemplate via Git...")
 		with tempfile.TemporaryDirectory() as tempDir:
@@ -164,7 +164,13 @@ def main() -> None:
 					input("\nPress Enter to exit...")
 				sys.exit(1)
 
-			runSynchronization(tempDir, addonDir, parsedArgs.dryRun)
+			syncSuccess = runSynchronization(tempDir, addonDir, parsedArgs.dryRun)
+
+	if not syncSuccess:
+		logger.error("Update process completed with errors. Check logs above.")
+		if sys.stdin.isatty():
+			input("\nPress Enter to exit...")
+		sys.exit(1)
 
 	if not parsedArgs.dryRun:
 		logger.info("Project successfully updated. Workspace cleared.")
