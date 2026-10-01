@@ -23,7 +23,10 @@ def parseAstDict(dictNode: ast.Dict) -> dict[str, Any]:
 		keyName: Any = getattr(keyNode, "value", None)
 		if isinstance(valNode, ast.Call) and getattr(valNode.func, "id", None) == "_":
 			valNode = valNode.args[0]
-		valValue: Any = getattr(valNode, "value", None)
+		if isinstance(valNode, ast.Constant):
+			valValue: Any = valNode.value
+		else:
+			valValue = ast.unparse(valNode)
 		if keyName is not None:
 			extractedData[keyName] = valValue
 	return extractedData
@@ -42,7 +45,10 @@ def parseAstKeywords(keywordList: list[ast.keyword]) -> dict[str, Any]:
 		valNode: ast.expr = keywordItem.value
 		if isinstance(valNode, ast.Call) and getattr(valNode.func, "id", None) == "_":
 			valNode = valNode.args[0]
-		valValue: Any = getattr(valNode, "value", None)
+		if isinstance(valNode, ast.Constant):
+			valValue: Any = valNode.value
+		else:
+			valValue = ast.unparse(valNode)
 		if keyName is not None:
 			extractedData[keyName] = valValue
 	return extractedData
