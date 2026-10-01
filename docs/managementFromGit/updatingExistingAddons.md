@@ -109,14 +109,26 @@ Before running the tool, ensure your system meets the following requirements:
 - **Git**:
   Git must be installed and available in your system `PATH`.
 
-- For add-ons without a pyproject.toml file, **Dependency Management (tomlkit)**:
-  Because the automated script relies on the third-party `tomlkit` library to safely parse and merge configurations, it must be available in the Python environment used to run the script (either installed in the environment, or provided temporarily via `uv run --with tomlkit`).
+- **Dependency Management (`tomlkit`)**:
+  The synchronization engine relies on `tomlkit` to safely parse and update `pyproject.toml`.
+  You have two options to make this dependency available:
+
+  - **On-the-fly via global cache (Recommended):**
+    Pass `--with tomlkit` along with `--no-project` to `uv run`.
+    `uv` automatically downloads `tomlkit` into its global cache (`%LocalAppData%\uv\cache` on Windows) and reuses it for all future executions without modifying your local environment.
+  - **Permanent Global Installation:**
+    If you prefer to make `tomlkit` permanently available inside `uv`'s managed Python environment, run the following command:
+    ```sh
+    uv pip install --python 3.13 tomlkit
+    ```
+    This command installs `tomlkit` directly into the `site-packages` directory of `uv`'s central Python 3.13 installation.
+    Once installed globally, you can execute the tool using `uv run --no-project python syncAddonTool` without needing to append `--with tomlkit` to every command.
 
 > [!IMPORTANT]
 > **Project Structure & Execution Methods:**
 > The update engine is structured as a Python package that relies on the `syncAddonTool/` directory layout.
-> You can copy the `syncAddonTool/` folder directly into any add-on repository and run `uv run python syncAddonTool`.
-> Alternatively, if you prefer to run the tool from an external directory outside of the target repository, you can specify its location using the `-ad` parameter: `uv run python -m syncAddonTool -ad /path/to/my-nvda-addon`.
+> You can copy the `syncAddonTool/` folder directly into any add-on repository and run `uv run --no-project --with tomlkit python syncAddonTool`.
+> Alternatively, if you prefer to run the tool from an external directory outside of the target repository, you can specify its location using the `-ad` parameter: `uv run --no-project --with tomlkit python -m syncAddonTool -ad /path/to/my-nvda-addon`.
 > Finally, you can use the standalone executable (`syncAddonTool.exe`), which requires no Python dependencies.
 
 ### Running the automated tool
@@ -126,16 +138,14 @@ The tool is highly flexible and supports two execution modes:
 1. **Standard Mode (No arguments):**
    Run the tool directly from the root of your repository or from any of its subdirectories.
    It will automatically locate the project root by searching for `buildVars.py`.
-
    ```sh
-   uv run python syncAddonTool
+   uv run --no-project --with tomlkit python syncAddonTool
    ```
 
 2. **Target Directory Mode (With argument):**
    Run the tool from any working directory by supplying the optional `addonDir` path (relative or absolute) pointing to the add-on repository you wish to update.
-
    ```sh
-   uv run python syncAddonTool -ad ../MyAddon
+   uv run --no-project --with tomlkit python syncAddonTool -ad ../MyAddon
    ```
 
 > [!NOTE]
@@ -240,7 +250,7 @@ addon/doc/fr/custom-extra-help.html
 3. **Case-Insensitivity:**
    The update tool evaluates exclusions using a standardized, case-insensitive matching algorithm.
    This ensures maximum cross-platform reliability (especially between Windows and Unix-like environments).
-   Since the tool automatically normalizes all inputs to lowercase during execution, **you can write your rules using any casing you prefer** (e.g., `UpdateAddonFromTemplate.py` or `updateaddonfromtemplate.py` will both work perfectly).
+   Since the tool automatically normalizes all inputs to lowercase during execution, **you can write your rules using any casing you prefer** (e.g., `syncAddonTool` or `syncaddontool` will both work perfectly).
 
 4. **File Location Requirement:**
    The update engine always loads custom exclusions from the target add-on's root folder being updated.
@@ -257,13 +267,13 @@ Downloads the latest remote template, creates a safety backup of your repository
 - **Syntax A (Directory execution inside the add-on repository)**:
 
   ```sh
-  uv run python syncAddonTool
+  uv run --no-project --with tomlkit python syncAddonTool
   ```
 
 - **Syntax B (Targeting an external add-on directory)**:
 
   ```sh
-  uv run python syncAddonTool -ad /path/to/my-nvda-addon
+  uv run --no-project --with tomlkit python syncAddonTool -ad /path/to/my-nvda-addon
   ```
 
 - **Syntax C (Standalone executable)**:
@@ -279,13 +289,13 @@ Useful when testing local modifications applied to `AddonTemplate` or when worki
 - **Syntax A (Directory execution inside the add-on repository)**:
 
   ```sh
-  uv run python syncAddonTool -td /path/to/local/AddonTemplate
+  uv run --no-project --with tomlkit python syncAddonTool -td /path/to/local/AddonTemplate
   ```
 
 - **Syntax B (Targeting an external add-on directory)**:
 
   ```sh
-  uv run python syncAddonTool -ad /path/to/my-nvda-addon -td /path/to/local/AddonTemplate
+  uv run --no-project --with tomlkit python syncAddonTool -ad /path/to/my-nvda-addon -td /path/to/local/AddonTemplate
   ```
 
 - **Syntax C (Standalone executable)**:
@@ -301,13 +311,13 @@ Analyzes structural layouts, evaluates configurations, reads `.addonmergeignore`
 - **Syntax A (Directory execution inside the add-on repository)**:
 
   ```sh
-  uv run python syncAddonTool --dry-run
+  uv run --no-project --with tomlkit python syncAddonTool --dry-run
   ```
 
 - **Syntax B (Targeting an external add-on directory)**:
 
   ```sh
-  uv run python syncAddonTool --dry-run -ad /path/to/my-nvda-addon
+  uv run --no-project --with tomlkit python syncAddonTool --dry-run -ad /path/to/my-nvda-addon
   ```
 
 - **Syntax C (Standalone executable)**:
@@ -323,43 +333,19 @@ Targets a project repository while skipping the automated safety backup creation
 - **Syntax A (Directory execution inside the add-on repository)**:
 
   ```sh
-  uv run python syncAddonTool --skip-backup
+  uv run --no-project --with tomlkit python syncAddonTool --skip-backup
   ```
 
 - **Syntax B (Targeting an external add-on directory)**:
 
   ```sh
-  uv run python syncAddonTool -ad /path/to/my-nvda-addon --skip-backup
+  uv run --no-project --with tomlkit python syncAddonTool -ad /path/to/my-nvda-addon --skip-backup
   ```
 
 - **Syntax C (Standalone executable)**:
 
   ```cmd
   syncAddonTool.exe -ad C:\path\to\my-nvda-addon --skip-backup
-  ```
-
-##### 5. Run without Prior Installation (`--with` option)
-
-If you wish to execute the synchronization tool without installing its required third-party dependencies (like `tomlkit`) into your active environment beforehand, you can request `uv` to expose them temporarily during command execution:
-
-- **Using directory execution with `uv`**:
-
-  ```sh
-  uv run --with tomlkit python syncAddonTool
-  ```
-
-- **Using module execution with `uv`**:
-
-  ```sh
-  uv run --with tomlkit python -m syncAddonTool
-  ```
-
-- **Using Standalone Executable**:
-
-  *(Note: No `--with` option or dependency installation is needed when running `syncAddonTool.exe`, as all required dependencies are already bundled inside the executable.)*
-
-  ```cmd
-  syncAddonTool.exe
   ```
 
 ---
