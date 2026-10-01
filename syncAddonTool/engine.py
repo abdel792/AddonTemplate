@@ -6,6 +6,7 @@
 
 import ast
 import logging
+import fnmatch
 import os
 from pathlib import Path
 import shutil
@@ -37,18 +38,19 @@ def setupAddonMergeIgnore(tempDir: str | Path, addonDir: str | Path, dryRun: boo
 		logger.info("Bootstrapped missing .addonmergeignore from template.")
 
 
-def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> None:
+def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> bool:
 	"""Synchronize template machinery files from the temporary workspace into the target directory.
 
 	:param tempDir: Path to the local temporary directory containing the template files.
 	:param addonDir: Path to the target add-on root directory.
 	:param dryRun: If True, simulate the sync without writing changes to disk.
-	:return: None
+	:return: True if synchronization completed without errors, False otherwise.
 	"""
 	logger.info("Phase 4: Synchronizing template machinery files...")
 	setupAddonMergeIgnore(tempDir, addonDir, dryRun)
 
 	protectedElementsSet: set[str] = {
+		".addonmergeignore",
 		"readme.md",
 		"changelog.md",
 		"addontemplate.egg-info",
@@ -86,6 +88,21 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> None:
 		if reportEntryText not in syncReportList:
 			syncReportList.append(reportEntryText)
 
+	def isPathProtected(relPathText: str) -> bool:
+		"""Check whether a given relative path matches any defined protection rules or wildcard patterns.
+
+		:param relPathText: Relative path string to verify.
+		:return: True if the path matches a protected element or pattern, False otherwise.
+		"""
+		pathNormalizedText: str = relPathText.replace("\\", "/").lower()
+		patternItem: str
+		for patternItem in protectedElementsSet:
+			if pathNormalizedText == patternItem or fnmatch.fnmatch(pathNormalizedText, patternItem):
+				return True
+			if fnmatch.fnmatch(os.path.basename(pathNormalizedText), patternItem):
+				return True
+		return False
+
 	def inspectAndCopyDirectory(srcDirPath: str, dstDirPath: str) -> None:
 		"""Inspect directory recursively for protected elements and copy non-protected files.
 
@@ -103,8 +120,7 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> None:
 			dirNameItem: str
 			for dirNameItem in walkDirs:
 				relPathText: str = dirNameItem if relDirPath == "." else os.path.join(relDirPath, dirNameItem)
-				relPathNormalizedText: str = relPathText.replace("\\", "/").lower()
-				if relPathNormalizedText in protectedElementsSet:
+				if isPathProtected(relPathText):
 					displayPathText: str = relPathText.replace("\\", "/")
 					addReportEntry(f"- **{displayPathText}/**: skipped (protected scope)")
 				else:
@@ -117,8 +133,7 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> None:
 			fileNameItem: str
 			for fileNameItem in walkFiles:
 				relPathText = fileNameItem if relDirPath == "." else os.path.join(relDirPath, fileNameItem)
-				relPathNormalizedText = relPathText.replace("\\", "/").lower()
-				if relPathNormalizedText in protectedElementsSet:
+				if isPathProtected(relPathText):
 					displayPathText = relPathText.replace("\\", "/")
 					addReportEntry(f"- **{displayPathText}**: skipped (protected scope)")
 				else:
@@ -130,8 +145,7 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> None:
 
 	rootItemName: str
 	for rootItemName in os.listdir(tempDir):
-		itemNormalizedText: str = rootItemName.lower()
-		if itemNormalizedText in protectedElementsSet:
+		if isPathProtected(rootItemName):
 			addReportEntry(f"- **{rootItemName}**: skipped (protected scope)")
 			continue
 
@@ -191,3 +205,10 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> None:
 		buildvarsStatusText,
 		pyprojectStatusText,
 	)
+
+	hasFailuresBool: bool = (
+		any("failed" in reportEntryItem for reportEntryItem in syncReportList)
+		or "failed" in buildvarsStatusText.lower()
+		or "failed" in pyprojectStatusText.lower()
+	)
+	return not hasFailuresBool
