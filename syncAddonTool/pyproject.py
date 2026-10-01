@@ -49,7 +49,9 @@ def createPyprojectFromTemplate(templateFilePath: Path, metadataDict: dict[str, 
 	if "addon_summary" in metadataDict and metadataDict["addon_summary"]:
 		projectSection["description"] = metadataDict["addon_summary"]
 
-	addonUrlText: str = str(metadataDict.get("addon_url", "")).strip()
+	addonUrlText: str = str(
+		metadataDict.get("addon_sourceURL") or metadataDict.get("addon_url") or ""
+	).strip()
 	if addonUrlText:
 		if "urls" not in projectSection:
 			projectSection["urls"] = tomlkit.table()
@@ -57,6 +59,15 @@ def createPyprojectFromTemplate(templateFilePath: Path, metadataDict: dict[str, 
 
 	if "addon_author" in metadataDict and metadataDict["addon_author"]:
 		projectSection["maintainers"] = formatAuthorList(metadataDict["addon_author"])
+
+	# Ensure that [tool.setuptools] is always present at creation ---
+	if "tool" not in tomlDoc:
+		tomlDoc["tool"] = tomlkit.table()
+
+	if "setuptools" not in tomlDoc["tool"]:
+		setuptoolsTable = tomlkit.table()
+		setuptoolsTable["py-modules"] = tomlkit.array()
+		tomlDoc["tool"]["setuptools"] = setuptoolsTable
 
 	return tomlDoc
 
@@ -406,11 +417,41 @@ def mergePyprojectToml(
 			if not wasOriginallyNvaccess:
 				cleanupPlaceholderAuthors(projectSectionDict)
 
+			addonUrlText: str = str(
+				metadataDict.get("addon_sourceURL") or metadataDict.get("addon_url") or ""
+			).strip()
+			if addonUrlText:
+				if "urls" not in projectSectionDict or not isinstance(projectSectionDict["urls"], MutableMapping):
+					projectSectionDict["urls"] = {}
+				if not projectSectionDict["urls"].get("Repository"):
+					projectSectionDict["urls"]["Repository"] = addonUrlText
+
 		finalDoc: tomlkit.TOMLDocument = tomlkit.document()
 		sectionKey: str
 		sectionVal: Any
+		# Copy primary sections in preferred order
+		if "build-system" in mergedDictData:
+			finalDoc["build-system"] = mergedDictData["build-system"]
+
+		if "project" in mergedDictData:
+			finalDoc["project"] = mergedDictData["project"]
+
+		# Insert dependency-groups immediately after the project section
+		if "dependency-groups" in mergedDictData:
+			if "project" in finalDoc:
+				insertKeyAfter(
+					finalDoc,
+					targetKey="project",
+					newKey="dependency-groups",
+					value=mergedDictData["dependency-groups"],
+				)
+			else:
+				finalDoc["dependency-groups"] = mergedDictData["dependency-groups"]
+
+		# Append any remaining sections (e.g. tool tables)
 		for sectionKey, sectionVal in mergedDictData.items():
-			finalDoc[sectionKey] = sectionVal
+			if sectionKey not in finalDoc:
+				finalDoc[sectionKey] = sectionVal
 
 		if "project" in finalDoc:
 			projectTable: Any = finalDoc["project"]
@@ -474,8 +515,23 @@ def mergePyprojectToml(
 				makeMultilineArray(toolSection["pyright"], "exclude")
 				makeMultilineArray(toolSection["pyright"], "extraPaths")
 
+		# Automatic control and injection of [tool.setuptools] ---
+		if "tool" not in finalDoc:
+			finalDoc["tool"] = tomlkit.table()
+
+		toolTable: Any = finalDoc["tool"]
+		if "setuptools" not in toolTable:
+			toolTable["setuptools"] = tomlkit.table()
+
+		setuptoolsTable: Any = toolTable["setuptools"]
+		if "py-modules" not in setuptoolsTable:
+			setuptoolsTable["py-modules"] = []
+			logger.debug("Added missing [tool.setuptools] py-modules section to final document")
+
+		makeMultilineArray(setuptoolsTable, "py-modules")
+
 		if not dryRun:
-			tomlFormattedText: str = fixTomlIndentation(tomlkit.dumps(finalDoc))
+			tomlFormattedText: str = fixTomlIndentation(tomlkit.dumps(finalDoc)).lstrip()
 			with projectPathObj.open("w", encoding="utf-8") as f:
 				f.write(tomlFormattedText)
 		return "merged intelligently (tomlkit)"
