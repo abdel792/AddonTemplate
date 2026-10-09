@@ -164,7 +164,7 @@ If everything builds successfully, remove the `<addon>_bak_<timestamp>` director
 ```sh
 git clean -f
 git add .
-git commit -m "chore: sync infrastructure with AddonTemplate"
+git commit -m "Chore: sync infrastructure with AddonTemplate"
 ```
 
 ### Using the Update Tool via Command Line
