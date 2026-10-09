@@ -13,7 +13,7 @@ For unit tests to execute successfully, target modules (such as `syncAddonTool`)
 
 To run the entire unit test suite with automatic test discovery and detailed output for every executed test case:
 
-``` bash
+```bash
 uv run python -m unittest discover -s tests -v
 ```
 
@@ -28,7 +28,7 @@ Here is what each part of the command does:
 You can run individual test modules during development by specifying their path:
 
 * **Add-on Synchronization Tool Tests:**
-  ``` bash
+  ```bash
   uv run python -m unittest -v tests/unit/template/test_syncAddonTool.py
   ```
 
