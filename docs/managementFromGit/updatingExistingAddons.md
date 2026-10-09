@@ -45,7 +45,7 @@ You can merge the latest template changes into your repository instead of manual
 *This document explains the update procedures, including both the recommended automated method using `syncAddonTool` and the manual Git merge workflow.*
 
 > [!NOTE]
-> Updating from AddonTemplate only affects your project's infrastructure (build scripts, GitHub workflows, configuration files, etc.). It does **not** modify your add-on's source code.
+> Updating from addonTemplate only affects your project's infrastructure (build scripts, GitHub workflows, configuration files, etc.). It does **not** modify your add-on's source code.
 
 ## Before you begin
 
