@@ -198,7 +198,7 @@ The compiled executable will be generated inside the `dist/` folder (`dist/syncA
 
 ##### 2. Running the Executable
 
-Once compiled or downloaded, `syncAddonTool.exe` accepts the exact same command-line flags (`-ad`, `-td`, `--dry-run`, `--skip-backup`) as the Python execution modes:
+Once compiled, `syncAddonTool.exe` accepts the exact same command-line flags (`-ad`, `-td`, `--dry-run`, `--skip-backup`) as the Python execution modes:
 
 - **Targeting an add-on directory from anywhere**:
 
