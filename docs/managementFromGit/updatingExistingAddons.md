@@ -44,8 +44,8 @@ You can merge the latest template changes into your repository instead of manual
 
 *This document explains the update procedures, including both the recommended automated method using `syncAddonTool` and the manual Git merge workflow.*
 
-> [!NOTE]
-> Updating from addonTemplate only affects your project's infrastructure (build scripts, GitHub workflows, configuration files, etc.). It does **not** modify your add-on's source code.
+> **Note:**
+> Updating from addonTemplate only affects your project's infrastructure (build scripts, GitHub workflows, configuration files, etc.). It does not modify your add-on's source code.
 
 ## Before you begin
 
@@ -124,8 +124,8 @@ Before running the tool, ensure your system meets the following requirements:
     This command installs `tomlkit` directly into the `site-packages` directory of `uv`'s central Python 3.13 installation.
     Once installed globally, you can execute the tool using `uv run --no-project python syncAddonTool` without needing to append `--with tomlkit` to every command.
 
-> [!IMPORTANT]
-> **Project Structure & Execution Methods:**
+> **Important:**
+> Project Structure & Execution Methods:
 > The update engine is structured as a Python package that relies on the `syncAddonTool/` directory layout.
 > You can copy the `syncAddonTool/` folder directly into any add-on repository and run `uv run --no-project --with tomlkit python syncAddonTool`.
 > Alternatively, if you prefer to run the tool from an external directory outside of the target repository, you can specify its location using the `-ad` parameter: `uv run --no-project --with tomlkit python -m syncAddonTool -ad /path/to/my-nvda-addon`.
@@ -148,7 +148,7 @@ The tool is highly flexible and supports two execution modes:
    uv run --no-project --with tomlkit python syncAddonTool -ad ../MyAddon
    ```
 
-> [!NOTE]
+> **Note:**
 > Before applying any modifications, the tool creates an untracked backup directory located next to the add-on folder named `<addon>_bak_<timestamp>`.
 > This directory contains a copy of the entire project before the update, allowing you to restore the previous state manually if necessary.
 
