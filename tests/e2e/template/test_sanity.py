@@ -29,4 +29,3 @@ class TestE2ESanity(unittest.TestCase):
 		failure detection in E2E tests.
 		"""
 		self.assertTrue(False)
-    

@@ -27,5 +27,5 @@ End-to-end tests are located under the `tests/e2e/` directory to validate system
 To execute tests for a specific E2E test file:
 
 ```bash
-uv run python -m unittest -v tests/e2e/test_sanity.py
+uv run python -m unittest -v tests/e2e/template/test_sanity.py
 ```
