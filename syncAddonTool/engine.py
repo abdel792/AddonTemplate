@@ -54,7 +54,7 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> bool:
 		"readme.md",
 		"changelog.md",
 		"addontemplate.egg-info",
-		".github/workflows/unittests.yml",
+		".github/workflows/tests.yml",
 		"addon",
 		".git",
 		"__pycache__",

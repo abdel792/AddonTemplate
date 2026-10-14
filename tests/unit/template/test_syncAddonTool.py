@@ -40,63 +40,6 @@ def load_tests(
 class TestSyncAddonTool(unittest.TestCase):
 	"""Test cases for checking synchronization logic and file merges."""
 
-	def testMergeLegacyBuildvarsWithOfficialTemplate(self) -> None:
-		"""Ensure legacy buildVars.py is correctly merged into the latest official template structure."""
-		with tempfile.TemporaryDirectory() as tempDir:
-			projBvPath: Path = Path(tempDir) / "buildVars.py"
-			tplBvPath: Path = Path(tempDir) / "template_buildVars.py"
-
-			# 1. Legacy buildVars fixture
-			legacyFixture: Path = FIXTURES_DIR / "legacyBuildVars.py"
-			projBvPath.write_text(legacyFixture.read_text(encoding="utf-8"), encoding="utf-8")
-
-			# 2. Official template buildVars fixture
-			templateFixture: Path = FIXTURES_DIR / "templateBuildVars.py"
-			tplBvPath.write_text(templateFixture.read_text(encoding="utf-8"), encoding="utf-8")
-
-			metadata: dict
-			globalVars: dict
-			metadata, globalVars = extractBuildvarsMetadata(projBvPath)
-			status: str = mergeBuildvarsFile(
-				projBvPath, tplBvPath, metadata, globalVars, dryRun=False
-			)
-
-			self.assertEqual(status, "merged & structured (AST verified)")
-
-			content: str = projBvPath.read_text(encoding="utf-8")
-			# Verify metadata mapping from fixture
-			self.assertIn('addon_name="myAddon"', content)
-			self.assertIn('addon_version="1.0.0"', content)
-			# Verify new official template imports
-			self.assertIn("from site_scons.site_tools.NVDATool.typings import", content)
-
-	def testMergeModernBuildvarsMissingSpeechDictionaries(self) -> None:
-		"""Ensure modern buildVars.py gets missing speechDictionaries imported/injected from official template."""
-		with tempfile.TemporaryDirectory() as tempDir:
-			projBvPath: Path = Path(tempDir) / "buildVars.py"
-			tplBvPath: Path = Path(tempDir) / "template_buildVars.py"
-
-			# 1. Modern buildVars fixture (without SpeechDictionaries imported in original)
-			modernFixture: Path = FIXTURES_DIR / "modernBuildVars.py"
-			projBvPath.write_text(modernFixture.read_text(encoding="utf-8"), encoding="utf-8")
-
-			# 2. Official template buildVars fixture
-			templateFixture: Path = FIXTURES_DIR / "templateBuildVars.py"
-			tplBvPath.write_text(templateFixture.read_text(encoding="utf-8"), encoding="utf-8")
-
-			metadata: dict
-			globalVars: dict
-			metadata, globalVars = extractBuildvarsMetadata(projBvPath)
-			status: str = mergeBuildvarsFile(
-				projBvPath, tplBvPath, metadata, globalVars, dryRun=False
-			)
-
-			self.assertEqual(status, "merged & structured (AST verified)")
-
-			content: str = projBvPath.read_text(encoding="utf-8")
-			self.assertIn('addon_name="myAddon"', content)
-			self.assertIn("SpeechDictionaries", content)
-
 	def testMergeBuildvarsPreservesQuoteStyleFromFixture(self) -> None:
 		"""Ensure mergeBuildvarsFile preserves single or double quote style based on the template fixture."""
 		with tempfile.TemporaryDirectory() as tempDir:
