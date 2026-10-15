@@ -141,21 +141,22 @@ def mergeBuildvarsFile(
 					formattedValueText: str
 					if valueVal is None:
 						formattedValueText = "None"
-					elif isinstance(valueVal, str):
+					elif isinstance(kwItem.value, ast.Constant):
+						# Handle direct literal values (strings, numbers, booleans)
 						isTranslatable: bool = keyName in ["addon_summary", "addon_description", "addon_changelog"]
 						
-						# Inspect source segment to detect original quote style (double vs single)
 						rawSourceText: str = ast.get_source_segment(tplContentText, kwItem.value) or ""
 						cleanedSourceText: str = rawSourceText.strip()
 						useDoubleQuotesBool: bool = cleanedSourceText.startswith('"') or cleanedSourceText.startswith('_("')
 						
 						formattedValueText = formatStringLiteral(
-							valueVal,
+							str(valueVal),
 							useDoubleQuotes=useDoubleQuotesBool,
 							isTranslatable=isTranslatable,
 						)
 					else:
-						formattedValueText = str(valueVal)
+						# Preserve non-literal expressions (e.g. variables or function calls) without forcing quotes
+						formattedValueText = ast.get_source_segment(tplContentText, kwItem.value) or ast.unparse(kwItem.value)
 
 					if kwItem.end_lineno is not None:
 						lineContentText: str = templateLineList[kwItem.lineno - 1]
