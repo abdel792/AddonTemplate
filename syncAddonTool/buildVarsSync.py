@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from .astUtils import parseAstDict, parseAstKeywords, replaceAstRange, usesOsModule
+from .astUtils import parseAstDict, parseAstKeywords, replaceAstRange, usesOsModule, usesGlobModule
 
 logger: logging.Logger = logging.getLogger("syncAddon")
 
@@ -112,6 +112,9 @@ def mergeBuildvarsFile(
 	:param dryRun: If True, simulate the merge without writing changes to disk.
 	:return: A string indicating the result of the merge operation.
 	"""
+	requiresOsImport: bool = False
+	requiresGlobImport: bool = False
+
 	templatePathObj: Path = Path(tplFilePath)
 	projectPathObj: Path = Path(projFilePath)
 
@@ -128,7 +131,6 @@ def mergeBuildvarsFile(
 
 	templateLineList: list[str] = tplContentText.splitlines(keepends=True)
 	replacementMap: dict[tuple[int, int], str] = {}
-	requiresOsImport: bool = False
 
 	astNodeItem: ast.AST
 	for astNodeItem in ast.walk(parsedTree):
@@ -174,6 +176,8 @@ def mergeBuildvarsFile(
 				valAstNode, valExprText = globalVarsDict[keyName]
 				if usesOsModule(valAstNode):
 					requiresOsImport = True
+				if usesGlobModule(valAstNode):
+					requiresGlobImport = True
 				if astNodeItem.end_lineno is not None:
 					lineContentText = templateLineList[astNodeItem.lineno - 1]
 					indentText = lineContentText[: len(lineContentText) - len(lineContentText.lstrip())]
@@ -187,6 +191,8 @@ def mergeBuildvarsFile(
 				valAstNode, valExprText = globalVarsDict[keyName]
 				if usesOsModule(valAstNode):
 					requiresOsImport = True
+				if usesGlobModule(valAstNode):
+					requiresGlobImport = True
 				if astNodeItem.end_lineno is not None:
 					lineContentText = templateLineList[astNodeItem.lineno - 1]
 					indentText = lineContentText[: len(lineContentText) - len(lineContentText.lstrip())]
@@ -201,6 +207,13 @@ def mergeBuildvarsFile(
 		hasOsImport: bool = any("import os" in line for line in templateLineList[:15])
 		if not hasOsImport:
 			templateLineList.insert(0, "import os\n")
+
+	if requiresGlobImport:
+		hasGlobImport: bool = any("from glob import glob" in line or "import glob" in line for line in templateLineList[:15])
+		if not hasGlobImport:
+			# Insert glob import right after os import or at the top
+			insertIndex: int = 1 if any("import os" in line for line in templateLineList[:2]) else 0
+			templateLineList.insert(insertIndex, "from glob import glob\n")
 
 	if not dryRun:
 		with projectPathObj.open("w", encoding="utf-8") as f:

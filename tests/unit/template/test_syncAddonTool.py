@@ -177,6 +177,31 @@ class TestSyncAddonTool(unittest.TestCase):
 			content: str = projBvPath.read_text(encoding="utf-8")
 			self.assertTrue(content.startswith("import os\n"))
 
+	def testMergeBuildvarsAutoImportsGlob(self) -> None:
+		"""Ensure 'from glob import glob' is automatically added if merged buildVars uses the glob module."""
+		with tempfile.TemporaryDirectory() as tempDir:
+			projBvPath: Path = Path(tempDir) / "buildVars.py"
+			tplBvPath: Path = Path(tempDir) / "template_buildVars.py"
+
+			# Legacy buildVars using glob function without import in template
+			projBvPath.write_text(
+				'pythonSources = glob("*.py")\n',
+				encoding="utf-8",
+			)
+
+			tplBvPath.write_text(
+				'pythonSources: list[str] = []\n',
+				encoding="utf-8",
+			)
+
+			metadata: dict
+			globalVars: dict
+			metadata, globalVars = extractBuildvarsMetadata(projBvPath)
+			mergeBuildvarsFile(projBvPath, tplBvPath, metadata, globalVars, dryRun=False)
+
+			content: str = projBvPath.read_text(encoding="utf-8")
+			self.assertIn("from glob import glob", content)
+
 	def testFixTomlIndentation(self) -> None:
 		"""Ensure 4-space indentations are converted to tabs across TOML blocks."""
 		inputToml: str = (

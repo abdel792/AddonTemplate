@@ -67,6 +67,21 @@ def usesOsModule(astNode: ast.AST) -> bool:
 	return False
 
 
+def usesGlobModule(astNode: ast.AST) -> bool:
+	"""Check recursively if an AST node references 'glob'.
+
+	:param astNode: The AST node to inspect.
+	:return: True if the node references 'glob', False otherwise.
+	"""
+	childNode: ast.AST
+	for childNode in ast.walk(astNode):
+		if isinstance(childNode, ast.Name) and childNode.id == "glob":
+			return True
+		if isinstance(childNode, ast.Call) and getattr(childNode.func, "id", None) == "glob":
+			return True
+	return False
+
+
 def replaceAstRange(templateLineList: list[str], replacementMap: dict[tuple[int, int], str]) -> None:
 	"""Apply AST line replacements on a line-by-line list in reverse order.
 
