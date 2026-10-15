@@ -83,7 +83,12 @@ def extractBuildvarsMetadata(filePath: str | Path) -> tuple[dict[str, Any], dict
 				sourceSegmentText: str = ast.get_source_segment(fileRootPath.read_text(encoding="utf-8"), astNodeItem.value) or ast.unparse(astNodeItem.value)
 				globalVarsDict[varNameText] = (astNodeItem.value, sourceSegmentText)
 		elif isinstance(astNodeItem, ast.AnnAssign):
-			if isinstance(astNodeItem.target, ast.Name) and astNodeItem.target.id in topLevelVarsSet:
+			if isinstance(astNodeItem.target, ast.Name) and astNodeItem.target.id == "addon_info":
+				if isinstance(astNodeItem.value, ast.Dict):
+					metadataDict.update(parseAstDict(astNodeItem.value))
+				elif isinstance(astNodeItem.value, ast.Call) and getattr(astNodeItem.value.func, "id", None) == "AddonInfo":
+					metadataDict.update(parseAstKeywords(astNodeItem.value.keywords))
+			elif isinstance(astNodeItem.target, ast.Name) and astNodeItem.target.id in topLevelVarsSet:
 				if astNodeItem.value is not None:
 					sourceSegmentText = ast.get_source_segment(fileRootPath.read_text(encoding="utf-8"), astNodeItem.value) or ast.unparse(astNodeItem.value)
 					globalVarsDict[astNodeItem.target.id] = (astNodeItem.value, sourceSegmentText)
