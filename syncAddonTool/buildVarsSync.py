@@ -24,8 +24,8 @@ def formatStringLiteral(val: str, useDoubleQuotes: bool = False, isTranslatable:
 	"""
 	formattedText: str
 	if useDoubleQuotes:
-		# Escape backslashes and internal double quotes if needed
-		escapedValText: str = val.replace("\\", "\\\\").replace('"', '\\"')
+		# Escape control characters, backslashes, and double quotes.
+		escapedValText: str = val.encode("unicode_escape").decode("ascii").replace('"', '\\"')
 		formattedText = f'"{escapedValText}"'
 	else:
 		# Default style using repr (single quotes)
