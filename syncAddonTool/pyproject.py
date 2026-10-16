@@ -421,6 +421,17 @@ def mergePyprojectToml(
 							wasOriginallyNvaccess = True
 							break
 
+		metadataRepositoryUrl: str = str(
+			metadataDict.get("addon_sourceURL") or metadataDict.get("addon_url") or ""
+		).strip()
+		if metadataRepositoryUrl and "project" in projTomlData:
+			originalUrls: Any = projTomlData["project"].get("urls")
+			if originalUrls is None:
+				projTomlData["project"]["urls"] = tomlkit.table()
+				originalUrls = projTomlData["project"]["urls"]
+			if isinstance(originalUrls, MutableMapping) and not originalUrls.get("Repository"):
+				originalUrls["Repository"] = metadataRepositoryUrl
+
 		mergedDictData: dict[str, Any] = deepMergeDicts(
 			cast(dict[str, Any], projTomlData), cast(dict[str, Any], tplTomlData)
 		)
