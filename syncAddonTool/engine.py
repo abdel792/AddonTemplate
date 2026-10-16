@@ -95,8 +95,13 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> bool:
 		:return: True if the path matches a protected element or pattern, False otherwise.
 		"""
 		pathNormalizedText: str = relPathText.replace("\\", "/").lower()
+		isDirectory: bool = os.path.isdir(os.path.join(tempDir, relPathText))
 		patternItem: str
 		for patternItem in protectedElementsSet:
+			if patternItem.endswith("/"):
+				if not isDirectory:
+					continue
+				patternItem = patternItem.rstrip("/")
 			if pathNormalizedText == patternItem or fnmatch.fnmatch(pathNormalizedText, patternItem):
 				return True
 			if fnmatch.fnmatch(os.path.basename(pathNormalizedText), patternItem):
