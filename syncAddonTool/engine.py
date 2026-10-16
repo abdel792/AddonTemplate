@@ -178,18 +178,27 @@ def runSynchronization(tempDir: str, addonDir: str, dryRun: bool) -> bool:
 	buildvarsMetadataDict, buildvarsGlobalsDict = extractBuildvarsMetadata(oldBuildvarsPath)
 	addonNameVal: Any = buildvarsMetadataDict.get("addon_name", os.path.basename(addonDir))
 
-	buildvarsStatusText: str = mergeBuildvarsFile(
-		oldBuildvarsPath,
-		templateBuildvarsPath,
-		buildvarsMetadataDict,
-		buildvarsGlobalsDict,
-		dryRun,
+	# Honor .addonmergeignore rules for structural configuration files as well
+	buildvarsStatusText: str = (
+		"skipped (protected scope)"
+		if isPathProtected("buildVars.py")
+		else mergeBuildvarsFile(
+			oldBuildvarsPath,
+			templateBuildvarsPath,
+			buildvarsMetadataDict,
+			buildvarsGlobalsDict,
+			dryRun,
+		)
 	)
-	pyprojectStatusText: str = mergePyprojectToml(
-		oldPyprojectPath,
-		templatePyprojectPath,
-		buildvarsMetadataDict,
-		dryRun,
+	pyprojectStatusText: str = (
+		"skipped (protected scope)"
+		if isPathProtected("pyproject.toml")
+		else mergePyprojectToml(
+			oldPyprojectPath,
+			templatePyprojectPath,
+			buildvarsMetadataDict,
+			dryRun,
+		)
 	)
 
 	logger.info("=" * 50)
