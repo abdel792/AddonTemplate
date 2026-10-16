@@ -424,7 +424,15 @@ def mergePyprojectToml(
 		mergedDictData: dict[str, Any] = deepMergeDicts(
 			cast(dict[str, Any], projTomlData), cast(dict[str, Any], tplTomlData)
 		)
-
+		# Remove static metadata fields from the merged dynamic list to comply with PEP 621
+		projectMetadata: Any = mergedDictData.get("project")
+		if isinstance(projectMetadata, MutableMapping) and "dynamic" in projectMetadata:
+			projectMetadata["dynamic"] = [
+				fieldName for fieldName in projectMetadata["dynamic"]
+				if fieldName not in projectMetadata
+			]
+			if not projectMetadata["dynamic"]:
+				del projectMetadata["dynamic"]
 		processDependencyGroupsMigration(mergedDictData, userFlatDepsList)
 
 		if "project" in mergedDictData:
