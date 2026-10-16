@@ -55,6 +55,7 @@ def extractBuildvarsMetadata(filePath: str | Path) -> tuple[dict[str, Any], dict
 	globalVarsDict: dict[str, tuple[ast.AST, str]] = {}
 	topLevelVarsSet: set[str] = {
 		"pythonSources",
+		"i18nSources",
 		"excludedFiles",
 		"baseLanguage",
 		"markdownExtensions",
