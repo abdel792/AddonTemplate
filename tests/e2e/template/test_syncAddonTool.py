@@ -375,11 +375,10 @@ class TestSyncAddonToolE2E(unittest.TestCase):
 		if not specPath.exists():
 			self.skipTest("syncAddonTool/syncAddonTool.spec not found in repository.")
 
-		# Clean previous build and dist artifacts to force a fresh compilation
-		for dirName in ["build", "dist"]:
-			dirPath: Path = Path(dirName)
-			if dirPath.exists():
-				shutil.rmtree(dirPath)
+		# Keep packaging outputs separate from existing developer artifacts.
+		tempDirObj: tempfile.TemporaryDirectory[str] = tempfile.TemporaryDirectory()
+		self.addCleanup(tempDirObj.cleanup)
+		tempPath: Path = Path(tempDirObj.name)
 
 		result: subprocess.CompletedProcess[str] = subprocess.run(
 			[
@@ -390,6 +389,10 @@ class TestSyncAddonToolE2E(unittest.TestCase):
 				"pyinstaller",
 				"syncAddonTool/syncAddonTool.spec",
 				"--noconfirm",
+				"--workpath",
+				str(tempPath / "build"),
+				"--distpath",
+				str(tempPath / "dist"),
 			],
 			capture_output=True,
 			text=True,
@@ -397,8 +400,8 @@ class TestSyncAddonToolE2E(unittest.TestCase):
 		)
 		self.assertEqual(result.returncode, 0, f"PyInstaller build failed: {result.stderr}")
 
-		expectedExe: Path = Path("dist/syncAddonTool.exe")
-		self.assertTrue(expectedExe.exists(), "Expected dist/syncAddonTool.exe to be generated")
+		expectedExe: Path = tempPath / "dist" / "syncAddonTool.exe"
+		self.assertTrue(expectedExe.exists(), f"Expected {expectedExe} to be generated")
 
 
 if __name__ == "__main__":
