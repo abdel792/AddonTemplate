@@ -88,7 +88,23 @@ def mergeDependencyLists(
 	:param contextName: Optional key/section name for logging context.
 	:return: A merged list with updated versions and preserved custom or newer user items.
 	"""
-	isActualDependencyList: bool = contextName in ["dependencies", "dependency-groups"]
+	isActualDependencyList: bool = (
+		not contextName
+		or contextName == "dependencies"
+		or contextName.endswith(".dependencies")
+		or "dependency-groups" in contextName
+	)
+
+	# Restrict requirement/package matching strictly to dependency arrays
+	if not isActualDependencyList:
+		# For non-dependency arrays (e.g. classifiers, include, exclude, paths),
+		# apply an explicit preservation and complete-value union policy without package parsing.
+		mergedList: list[Any] = list(projList)
+		for item in tplList:
+			if item not in mergedList:
+				mergedList.append(item)
+		return mergedList
+
 	# Only emit decision logs if processing dependency-groups, preventing duplicate
 	# or premature decision logs on flat project.dependencies before migration/purge.
 	shouldLogDecisions: bool = contextName != "dependencies" and isActualDependencyList
