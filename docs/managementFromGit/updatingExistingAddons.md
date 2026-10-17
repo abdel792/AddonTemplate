@@ -162,7 +162,7 @@ uv run scons
 If everything builds successfully, remove the `<addon>_bak_<timestamp>` directory, stage and commit the updated infrastructure:
 
 ```sh
-git clean -f
+git status --short
 git add .
 git commit -m "Chore: sync infrastructure with AddonTemplate"
 ```
